@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import type { StoreTag } from '@/types';
+import { inputClasses, labelClasses, buttonClasses } from '@/Components/ui';
+import { acceptPriceDraft } from '@/utils/sellerListingValidation';
 
 export type ListingDetails = {
     brand: string;
@@ -29,7 +31,12 @@ export default function SellerListingDetails({ data, errors, tags, departmentNam
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [suggestionError, setSuggestionError] = useState('');
     const [suggesting, setSuggesting] = useState(false);
-    const input = 'mt-2 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]';
+    const input = inputClasses;
+    // Weight and size fields take numbers only: letters, signs and a third decimal are refused as they are typed.
+    const decimal = (key: 'weight_kg' | 'length_cm' | 'width_cm' | 'height_cm', maximum: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
+        const value = acceptPriceDraft(event.target.value.trim(), maximum);
+        if (value !== null) onChange(key, value);
+    };
     const error = (key: string) => {
         let message = errors[key];
         if (!message && ['weight_kg', 'length_cm', 'width_cm', 'height_cm'].includes(key)) {
@@ -37,7 +44,7 @@ export default function SellerListingDetails({ data, errors, tags, departmentNam
             const maximum = key === 'weight_kg' ? 50000 : 10000;
             if (value && (!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(value) || Number(value) < 0.01 || Number(value) > maximum)) message = `Enter 0.01–${maximum.toLocaleString('en-PH')} with up to 2 decimal places.`;
         }
-        return message ? <span role="alert" className="mt-1 block text-xs font-normal text-rose-700">{message}</span> : null;
+        return message ? <span role="alert" className="mt-1.5 block text-[13px] font-normal text-brand-700">{message}</span> : null;
     };
     const membershipError = Object.entries(errors).find(([key]) => key === 'tag_names' || key.startsWith('tag_names.'))?.[1];
     const addTag = async (raw: string) => {
@@ -98,32 +105,31 @@ export default function SellerListingDetails({ data, errors, tags, departmentNam
     };
     const selected = new Set(data.tag_names.map(name => name.toLocaleLowerCase()));
     const available = tags.filter(tag => !selected.has(tag.name.toLocaleLowerCase()));
-    return <section className="space-y-4 border-t border-slate-300 pt-5" aria-label="Product details and tags">
-        <h3 className="text-sm font-bold text-slate-900">Product details</h3>
-        <p className="text-xs leading-relaxed text-slate-500">Buyers can view these saved details after you publish the listing. Drafts stay private.</p>
+    return <section className="space-y-4" aria-label="Product details and tags">
+        <h3 className="text-base font-semibold text-ink-900">Shipping and details</h3>
         <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-xs font-semibold text-slate-700">Brand<input value={data.brand} maxLength={100} onChange={event => onChange('brand', event.target.value)} placeholder="No brand, if unbranded" className={input} />{error('brand')}</label>
-            <label className="text-xs font-semibold text-slate-700">Condition<select value={data.condition} onChange={event => onChange('condition', event.target.value)} className={input}><option value="">Not specified</option><option value="new">New</option><option value="used">Used</option></select>{error('condition')}</label>
-            <label className="text-xs font-semibold text-slate-700">Declared weight (kg) *<input required type="number" inputMode="decimal" min="0.01" max="50000" step="0.01" value={data.weight_kg} onChange={event => onChange('weight_kg', event.target.value)} className={input} /><span className="mt-1 block font-normal text-slate-500">0.01–50,000 kg, up to 2 decimal places. Required to publish.</span>{error('weight_kg')}</label>
-            <fieldset className="min-w-0"><legend className="text-xs font-semibold text-slate-700">Dimensions (cm)</legend><div className="mt-2 grid grid-cols-3 gap-2">{(['length_cm', 'width_cm', 'height_cm'] as const).map((key, index) => <label key={key} className="text-xs text-slate-500">{['Length', 'Width', 'Height'][index]}<input type="number" inputMode="decimal" min="0.01" max="10000" step="0.01" value={data[key]} onChange={event => onChange(key, event.target.value)} className={input} />{error(key)}</label>)}</div><p className="mt-1 text-xs text-slate-500">Optional. If supplied, enter all three: 0.01–10,000 cm.</p></fieldset>
+            <div><label htmlFor="listing-weight" className={labelClasses}>Declared weight (kg) <span className="text-brand-700">*</span></label><input id="listing-weight" required type="text" inputMode="decimal" maxLength={8} placeholder="0.50" value={data.weight_kg} onChange={decimal('weight_kg', 50000)} className={input} />{error('weight_kg') ?? <span className="mt-1.5 block text-xs text-ink-600">Required to publish. Used for the shipping fee.</span>}</div>
+            <fieldset className="min-w-0"><legend className={labelClasses}>Package size (cm) <span className="font-normal text-ink-500">optional</span></legend><div className="grid grid-cols-3 gap-2">{(['length_cm', 'width_cm', 'height_cm'] as const).map((key, index) => <div key={key}><input type="text" inputMode="decimal" maxLength={8} aria-label={`${['Length', 'Width', 'Height'][index]} in cm`} placeholder={['Length', 'Width', 'Height'][index]} value={data[key]} onChange={decimal(key, 10000)} className={input} />{error(key)}</div>)}</div><span className="mt-1.5 block text-xs text-ink-600">Fill all three or leave all blank.</span></fieldset>
+            <div><label htmlFor="listing-brand" className={labelClasses}>Brand <span className="font-normal text-ink-500">optional</span></label><input id="listing-brand" value={data.brand} maxLength={100} onChange={event => onChange('brand', event.target.value)} placeholder="Leave blank if unbranded" className={input} />{error('brand')}</div>
+            <div><label htmlFor="listing-condition" className={labelClasses}>Condition</label><select id="listing-condition" value={data.condition} onChange={event => onChange('condition', event.target.value)} className={input}><option value="">Not specified</option><option value="new">New</option><option value="used">Used</option></select>{error('condition')}</div>
         </div>
         <fieldset className="space-y-3">
-            <legend className="text-xs font-semibold text-slate-700">Product tags</legend>
-            <p className="text-xs text-slate-500">Products stay in your approved {departmentName || 'shop'} department. Add flat search tags that describe this product (up to 20, 1–50 characters each).</p>
-            <div className="rounded-xl border border-slate-300 bg-white p-3">
+            <legend className={labelClasses}>Search tags <span className="font-normal text-ink-500">optional, up to 20</span></legend>
+            <p className="text-xs text-ink-600">Stays in your approved {departmentName || 'shop'} department. Tags help buyers find it.</p>
+            <div className="rounded-card border border-line-200 bg-white p-3">
                 <div className="flex flex-wrap gap-2" aria-label="Selected product tags">
-                    {data.tag_names.map(name => <span key={name.toLocaleLowerCase()} className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-800">{name}<button type="button" onClick={() => removeTag(name)} aria-label={`Remove ${name} tag`} className="rounded-full p-0.5 hover:bg-rose-100"><X className="h-3 w-3" /></button></span>)}
-                    {!data.tag_names.length && <span className="text-xs text-slate-500">No tags selected.</span>}
+                    {data.tag_names.map(name => <span key={name.toLocaleLowerCase()} className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">{name}<button type="button" onClick={() => removeTag(name)} aria-label={`Remove ${name} tag`} className="rounded-full p-0.5 hover:bg-brand-100"><X className="h-3 w-3" /></button></span>)}
+                    {!data.tag_names.length && <span className="text-xs text-ink-500">No tags yet.</span>}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                    <input value={data.tag_draft} onChange={event => onChange('tag_draft', event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addTag(data.tag_draft); } }} maxLength={50} placeholder="Add a product tag" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs" aria-label="Add product tag" />
-                    <button type="button" onClick={() => addTag(data.tag_draft)} disabled={tagPending || !data.tag_draft.trim() || data.tag_names.length >= 20} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold disabled:opacity-50">{tagPending ? 'Checking tag…' : 'Add tag'}</button>
-                    <button type="button" onClick={() => void suggestTags()} disabled={!productName.trim() || suggesting || data.tag_names.length >= 20} className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{suggesting ? <span className="animate-pulse">Checking…</span> : <><Sparkles className="h-3.5 w-3.5" />Suggest tags</>}</button>
+                    <input value={data.tag_draft} onChange={event => onChange('tag_draft', event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addTag(data.tag_draft); } }} maxLength={50} placeholder="Add a product tag" className={`${inputClasses} min-w-0 flex-1 basis-48`} aria-label="Add product tag" />
+                    <button type="button" onClick={() => addTag(data.tag_draft)} disabled={tagPending || !data.tag_draft.trim() || data.tag_names.length >= 20} className={buttonClasses('secondary')}>{tagPending ? 'Checking tag…' : 'Add tag'}</button>
+                    <button type="button" onClick={() => void suggestTags()} disabled={!productName.trim() || suggesting || data.tag_names.length >= 20} className={buttonClasses('secondary')}>{suggesting ? <span className="animate-pulse">Checking…</span> : <><Sparkles className="h-3.5 w-3.5" />Suggest tags</>}</button>
                 </div>
-                {available.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{available.map(tag => <button key={tag.id} type="button" onClick={() => addTag(tag.name)} disabled={tagPending || data.tag_names.length >= 20} className="rounded-full border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:border-rose-300 hover:text-rose-700 disabled:opacity-50">+ {tag.name}</button>)}</div>}
-                {suggestions.length > 0 && <div className="mt-3"><p className="text-xs font-semibold text-slate-600">AI suggestions · review before adding</p><div className="mt-2 flex flex-wrap gap-2">{suggestions.map(name => <button key={name} type="button" onClick={() => addTag(name)} disabled={tagPending || data.tag_names.length >= 20} className="rounded-full border border-violet-300 bg-violet-50 px-2.5 py-1 text-xs text-violet-800 disabled:opacity-50">+ {name}</button>)}</div></div>}
-                {suggestionError && <p role="alert" className="mt-2 text-xs text-rose-700">{suggestionError}</p>}
-                {membershipError && <p role="alert" className="mt-2 text-xs text-rose-700">{membershipError}</p>}
+                {available.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{available.map(tag => <button key={tag.id} type="button" onClick={() => addTag(tag.name)} disabled={tagPending || data.tag_names.length >= 20} className="rounded-full border border-line-300 px-2.5 py-1 text-xs text-ink-700 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50">+ {tag.name}</button>)}</div>}
+                {suggestions.length > 0 && <div className="mt-3"><p className="text-xs font-semibold text-ink-600">AI suggestions · review before adding</p><div className="mt-2 flex flex-wrap gap-2">{suggestions.map(name => <button key={name} type="button" onClick={() => addTag(name)} disabled={tagPending || data.tag_names.length >= 20} className="rounded-full border border-line-300 bg-white px-2.5 py-1 text-xs text-ink-700 hover:border-brand-500 disabled:opacity-50">+ {name}</button>)}</div></div>}
+                {suggestionError && <p role="alert" className="mt-2 text-[13px] text-brand-700">{suggestionError}</p>}
+                {membershipError && <p role="alert" className="mt-2 text-[13px] text-brand-700">{membershipError}</p>}
             </div>
         </fieldset>
     </section>;

@@ -36,7 +36,7 @@ const bundle = buildSync({
         export { default as Inventory } from '@/Pages/Seller/Products';
         export { default as SellerSettings } from '@/Pages/Seller/Settings';
         export { newListingStatus, sellerInventoryQuery, sellerVariantStock } from '@/utils/sellerInventory';
-        export { sellerListingError, acceptPriceDraft, acceptStockDraft } from '@/utils/sellerListingValidation';
+        export { sellerListingError, acceptPriceDraft, acceptStockDraft, acceptWholeNumberDraft } from '@/utils/sellerListingValidation';
         export { saveSellerListingDraft, loadSellerListingDraft, clearSellerListingDraft, saveSellerListingDraftImages, restoreSellerListingDraftImages, clearSellerListingDraftImages, scheduleSellerListingDraftSave, registerSellerListingDraftExitFlush } from '@/utils/sellerListingDraft';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
@@ -382,6 +382,22 @@ test('unavailable followed shops retain removal without disclosing restricted st
     assert.doesNotMatch(html, /Bagoo Crafts/);
 });
 
+test('seller number fields refuse letters, signs, exponents and extra decimals as they are typed', () => {
+    for (const value of ['abc', '-1', '+5', '1e3', '1.234', '01', '１', '12a', ' ']) {
+        assert.equal(ui.acceptPriceDraft(value), null, `price ${value}`);
+        assert.equal(ui.acceptStockDraft(value), null, `stock ${value}`);
+        assert.equal(ui.acceptWholeNumberDraft(value, 1000000, 1), null, `limit ${value}`);
+    }
+    assert.equal(ui.acceptPriceDraft('12.5'), '12.5');
+    assert.equal(ui.acceptPriceDraft('0.50', 50000), '0.50');
+    assert.equal(ui.acceptPriceDraft('50001', 50000), null);
+    assert.equal(ui.acceptStockDraft('1.5'), null);
+    assert.equal(ui.acceptStockDraft('100000'), null);
+    assert.equal(ui.acceptWholeNumberDraft('0', 1000000, 1), null);
+    assert.equal(ui.acceptWholeNumberDraft('25', 1000000, 1), '25');
+    assert.equal(ui.acceptWholeNumberDraft('', 1000000, 1), '');
+});
+
 test('typed product quantities reject invalid values without silently converting them', () => {
     for (const value of ['', '0', '01', '-1', '1.5', '1e1', 'abc', '100', ' 1', '１']) assert.ok(ui.productQuantityError(value, 99), value);
     assert.equal(ui.productQuantityError('1', 1), null);
@@ -493,7 +509,6 @@ test('inventory retains all filters and page links while displaying actual zero 
     assert.match(html, /Small: <strong>0<\/strong> available/);
     assert.match(html, /Large: <strong>20<\/strong> \(listing stock\)/);
     assert.match(html, /Blue: Unavailable/); assert.match(html, /Red: Available/);
-    assert.match(html, /Drafts stay off the marketplace\./);
     assert.doesNotMatch(html, /My Purchases|Seller shop switching/);
 });
 
@@ -504,7 +519,9 @@ test('inventory distinguishes filtered empty results and marks six units as heal
     const populated = await render(ui.Inventory, 'Seller/Products', {
         ...base, filters: {}, products: paginated([{ ...product, stock: 6, status: 'active', description: '' }]),
     }, 'seller');
-    assert.match(populated, /border-emerald-300[^"<]*"[^>]*>[\s\S]*?6 available/);
+    // Six units is healthy: plain stock count, no low-stock or sold-out warning.
+    assert.match(populated, /aria-label="Update available stock for [^"]+" class="[^"]*text-ink-900[^"]*">6</);
+    assert.doesNotMatch(populated, /Low stock|Sold out/);
 });
 
 test('inventory query resets pagination and keeps category and stock when search is cleared', () => {

@@ -12,11 +12,18 @@ export function acceptStockDraft(value: string): string | null {
     return value;
 }
 
+/** Accepts only whole numbers from `minimum` to `maximum` while typing; anything else (letters, signs, decimals) is refused. */
+export function acceptWholeNumberDraft(value: string, maximum: number, minimum = 0): string | null {
+    if (value === '') return '';
+    if (!/^(?:0|[1-9][0-9]*)$/.test(value) || Number(value) > maximum) return null;
+    return Number(value) < minimum ? null : value;
+}
+
 export const listingHints: Record<ListingField, string> = {
     name: '5–120 characters.',
     description: '20–3,000 characters.',
-    price: '₱1.00–₱1,000,000.00, with up to 2 decimal places.',
-    stock: '0–99,999 whole units. Zero stock appears as sold out.',
+    price: '₱1.00 to ₱1,000,000.00',
+    stock: 'Whole units. 0 shows as sold out.',
 };
 
 export function sellerListingError(field: ListingField, value: string): string | undefined {

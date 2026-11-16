@@ -5,6 +5,8 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { Badge, buttonClasses, inputClasses, labelClasses } from '@/Components/ui';
+import type { BadgeTone } from '@/Components/ui';
 import PortalLink from '@/Components/PortalLink';
 import { visitPortal } from '@/utils/catalogueRuntime';
 import useResolvedPage from '@/hooks/useResolvedPage';
@@ -12,7 +14,7 @@ import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
 import { Category, PaginatedData, Product, Shop, StoreTag } from '@/types';
 import { newListingStatus, sellerInventoryQuery, sellerVariantStock, SellerInventoryFilters } from '@/utils/sellerInventory';
-import { acceptPriceDraft, acceptStockDraft, listingHints, sellerListingError, type ListingField } from '@/utils/sellerListingValidation';
+import { acceptPriceDraft, acceptStockDraft, acceptWholeNumberDraft, listingHints, sellerListingError, type ListingField } from '@/utils/sellerListingValidation';
 import { clearSellerListingDraft, clearSellerListingDraftImages, indexedDbSellerListingDraftImageStore, loadSellerListingDraft, restoreSellerListingDraftImages, saveSellerListingDraft, saveSellerListingDraftImages, scheduleSellerListingDraftSave, registerSellerListingDraftExitFlush, type SellerListingDraft } from '@/utils/sellerListingDraft';
 import { 
     Package, 
@@ -33,7 +35,7 @@ import {
     AlertCircle, 
     GripVertical, 
     Sliders,
-    Camera, Copy
+    Camera, Copy, ChevronRight
 } from 'lucide-react';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -529,7 +531,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         const value = field === 'stock' && variants.combinations
             ? String(variants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0)) : form.data[field];
         const message = form.errors[field] || sellerListingError(field, value);
-        return <p role={message ? 'alert' : undefined} className={`mt-1.5 text-[11px] ${message ? 'text-rose-700' : 'text-slate-500'}`}>{message || listingHints[field]}</p>;
+        return <p role={message ? 'alert' : undefined} className={`mt-1.5 ${message ? 'text-[13px] text-brand-700' : 'text-xs text-ink-600'}`}>{message || listingHints[field]}</p>;
     };
 
     const variantFeedback = (isCreate: boolean) => Object.entries((isCreate ? createForm : editForm).errors)
@@ -1311,46 +1313,27 @@ export default function SellerProducts({ products, categories, shop, filters = {
         // 1. Zero Variations (Empty State)
         if (!hasOption1 && !hasOption2) {
             return (
-                <div className="p-5 bg-slate-50/90 rounded-2xl border border-dashed border-slate-300 font-sans space-y-4">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                            <div className="p-2.5 rounded-xl bg-slate-200/80 text-slate-600 mt-0.5">
-                                <Layers className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider font-sans">
-                                    Product Variations & Options
-                                </h4>
-                                <p className="text-xs text-slate-500 mt-0.5 max-w-md">
-                                    Currently sold as a single standalone item using the main listing price and warehouse stock. Add variation options if this product has multiple colors, sizes, storage capacities, or flavors.
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => enableOptionGroup(1, isCreate, 'Color / Edition')}
-                            className="px-3.5 py-2 bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold rounded-xl font-sans uppercase transition flex items-center gap-1.5 shrink-0 shadow-xs"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add Variation</span>
-                        </button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h3 className="text-base font-semibold text-ink-900">Options</h3>
+                        <p className="mt-0.5 text-xs text-ink-600">Add options if buyers choose a color, size or flavor.</p>
                     </div>
-
+                    <button
+                        type="button"
+                        onClick={() => enableOptionGroup(1, isCreate, 'Color / Edition')}
+                        className={buttonClasses('secondary', 'md', 'shrink-0')}
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span>Add Variation</span>
+                    </button>
                 </div>
             );
         }
 
         // 2. Active Variations UI
         return (
-            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-5 font-sans">
-                <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-                    <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-[#E00D42]" />
-                        <span className="font-bold text-xs uppercase tracking-wider text-slate-800 font-sans">
-                            Product Variations & Options
-                        </span>
-                    </div>
-                </div>
+            <div className="space-y-4">
+                <h3 className="text-base font-semibold text-ink-900">Options</h3>
 
                 {/* OPTION 1 (Visual / Images) */}
                 {hasOption1 ? (
@@ -1511,7 +1494,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             <button
                                 type="button"
                                 onClick={() => addColor(isCreate)}
-                                className="px-3.5 py-2 bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold rounded-xl uppercase transition shrink-0 flex items-center gap-1 font-sans"
+                                className={buttonClasses('secondary', 'md', 'shrink-0')}
                             >
                                 <Plus className="w-3 h-3" />
                                 <span>Add</span>
@@ -1621,7 +1604,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             <button
                                 type="button"
                                 onClick={() => addSize(isCreate)}
-                                className="px-3.5 py-2 bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold rounded-xl uppercase transition shrink-0 flex items-center gap-1 font-sans"
+                                className={buttonClasses('secondary', 'md', 'shrink-0')}
                             >
                                 <Plus className="w-3 h-3" />
                                 <span>Add</span>
@@ -1642,7 +1625,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             <button
                                 type="button"
                                 onClick={() => enableOptionGroup(2, isCreate, 'Specification / Size')}
-                                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-sans font-bold uppercase transition"
+                                className={buttonClasses('secondary', 'sm')}
                             >
                                 + Add option group
                             </button>
@@ -1667,206 +1650,128 @@ export default function SellerProducts({ products, categories, shop, filters = {
         const galleryError = galleryErrors.gallery_manifest || galleryErrors.image_files
             || Object.entries(galleryErrors).find(([field]) => field.startsWith('image_files.'))?.[1];
 
+        const full = gallery.length >= 9;
+        const pickFiles = () => { if (!full) fileInputRef.current?.click(); };
+
         return (
-            <div className="space-y-3 font-sans">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <label className="block font-bold text-slate-700 uppercase text-xs font-sans">
-                            Product Images ({gallery.length}/9)
-                        </label>
-                        {gallery.length > 0 && (
-                            <span className="text-[10px] text-slate-500 font-sans bg-slate-100 px-2 py-0.5 rounded-full">
-                                Drag to reorder
-                            </span>
-                        )}
+            <div className="space-y-3">
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                        <h3 className="text-base font-semibold text-ink-900">Photos <span className="text-sm font-normal text-ink-500 tabular-nums">{gallery.length}/9</span></h3>
+                        <p className="mt-0.5 text-xs text-ink-600">The first photo is the cover buyers see. Drag to reorder.</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-500 font-medium">Source:</span>
-                        <select
-                            value={imageMode}
-                            onChange={(e) => setImageMode(e.target.value as 'file' | 'url')}
-                            className="px-2.5 py-1 text-xs bg-slate-100 border border-slate-300 rounded-lg text-slate-800 font-sans focus:ring-1 focus:ring-[#E00D42]"
-                        >
-                            <option value="file">Image File (Upload)</option>
-                            <option value="url">Web Image URL</option>
-                        </select>
-                    </div>
+                    <button type="button" onClick={() => setImageMode(imageMode === 'file' ? 'url' : 'file')} className="text-[13px] font-medium text-ink-700 underline underline-offset-2 hover:text-ink-900">
+                        {imageMode === 'file' ? 'Add from a link instead' : 'Upload files instead'}
+                    </button>
                 </div>
 
-                {imageMode === 'file' ? (
-                    <div className="space-y-2">
-                        <UploadHint formats="JPG, PNG, WEBP or GIF" />
-                        <div
-                            onClick={() => { if (gallery.length < 9) fileInputRef.current?.click(); }}
-                            className={`border-2 border-dashed ${
-                                fileError 
-                                    ? 'border-rose-400 bg-rose-50/40' 
-                                    : 'border-slate-300 hover:border-[#E00D42] bg-slate-50/70 hover:bg-slate-50'
-                            } rounded-2xl p-4 text-center cursor-pointer transition`}
-                        >
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                multiple
-                                disabled={gallery.length >= 9}
-                                accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
-                                onChange={(e) => {
-                                    handleFilesSelected(e.target.files, isCreate);
-                                    if (fileInputRef.current) fileInputRef.current.value = '';
-                                }}
-                                className="hidden"
-                            />
-                            <div className="flex flex-col items-center justify-center gap-1.5 py-1">
-                                <div className={`w-9 h-9 rounded-full ${fileError ? 'bg-rose-100 text-rose-600' : 'bg-rose-50 text-[#E00D42]'} flex items-center justify-center`}>
-                                    <Upload className="w-4 h-4" />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-slate-800 text-xs">
-                                        {gallery.length >= 9 ? '9 images added. Remove one to add another.' : 'Click to upload image files (up to 9)'}
-                                    </p>
-                                    <p className="text-[11px] text-slate-400 mt-0.5">
-                                        Accepted formats: PNG, JPG, JPEG, WEBP, GIF (Max 5MB each)
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    disabled={full}
+                    accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
+                    onChange={(e) => {
+                        handleFilesSelected(e.target.files, isCreate);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="hidden"
+                />
 
-                        {fileError && (
-                            <div className="flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-sans">
-                                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
-                                <div>
-                                    <p className="font-bold">Upload Notice</p>
-                                    <p className="text-[11px]">{fileError}</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <input
-                                    type="url"
-                                    value={urlInput}
-                                    onChange={(e) => setUrlInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleAddUrl(urlInput, isCreate);
-                                        }
-                                    }}
-                                    placeholder="Paste direct image URL (https://...)"
-                                    className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                                />
-                                <LinkIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => handleAddUrl(urlInput, isCreate)}
-                                disabled={gallery.length >= 9}
-                                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-sans font-bold uppercase transition"
-                            >
-                                Add Image
-                            </button>
+                {imageMode === 'url' && (
+                    <div className="flex gap-2">
+                        <div className="relative min-w-0 flex-1">
+                            <LinkIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+                            <input
+                                type="url"
+                                value={urlInput}
+                                aria-label="Image link"
+                                onChange={(e) => setUrlInput(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddUrl(urlInput, isCreate); } }}
+                                placeholder="https://… (JPG, PNG, WEBP or GIF)"
+                                className={`${inputClasses} pl-9`}
+                            />
                         </div>
-                        <p className="text-[11px] text-slate-400">Direct image link (JPEG, PNG, WEBP, GIF)</p>
+                        <button type="button" onClick={() => handleAddUrl(urlInput, isCreate)} disabled={full || !urlInput.trim()} className={buttonClasses('secondary')}>Add photo</button>
                     </div>
                 )}
 
-                <p className="text-[11px] text-slate-500">1–9 images to publish. Drafts may have no images.</p>
-                {galleryError && <p role="alert" className="text-xs text-rose-700">{galleryError}</p>}
-                {/* Gallery Items Grid with Drag & Drop */}
+                {fileError && (
+                    <p role="alert" className="flex items-start gap-2 rounded-control bg-brand-50 px-3 py-2 text-[13px] text-brand-700">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{fileError}
+                    </p>
+                )}
+                {galleryError && <p role="alert" className="text-[13px] text-brand-700">{galleryError}</p>}
+
                 {gallery.length === 0 ? (
-                    <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-slate-400 text-xs font-sans">
-                        No images attached. Upload one or more images above.
-                    </div>
+                    <button
+                        type="button"
+                        onClick={imageMode === 'file' ? pickFiles : undefined}
+                        className="flex w-full flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-300 bg-surface-50 px-4 py-12 text-center hover:border-brand-500 hover:bg-white"
+                    >
+                        <Upload className="h-6 w-6 text-ink-400" />
+                        <span className="text-sm font-semibold text-ink-900">{imageMode === 'file' ? 'Add photos' : 'Paste a link above'}</span>
+                        <span className="text-xs text-ink-600">Up to 9 · JPG, PNG, WEBP or GIF · 5 MB each · needed to publish</span>
+                    </button>
                 ) : (
-                    <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 font-sans">
-                            <span>Image #1 is the primary cover displayed in catalogs</span>
-                            <span>{gallery.length} image{gallery.length > 1 ? 's' : ''}</span>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                            {gallery.map((item, index) => {
-                                const isPrimary = index === 0;
-                                const isBeingDragged = dragIndex === index;
-                                const isOver = dragOverIndex === index;
+                    <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5" aria-label="Product photos">
+                        {gallery.map((item, index) => {
+                            const isPrimary = index === 0;
+                            const isBeingDragged = dragIndex === index;
+                            const isOver = dragOverIndex === index;
 
-                                return (
-                                    <div
-                                        key={item.id}
-                                        draggable
-                                        onDragStart={() => handleDragStart(index, isCreate)}
-                                        onDragOver={(e) => handleDragOver(e, index, isCreate)}
-                                        onDrop={() => handleDrop(index, isCreate)}
-                                        onDragEnd={() => handleDragEnd(isCreate)}
-                                        className={`group relative rounded-xl border overflow-hidden transition-all select-none ${
-                                            isBeingDragged
-                                                ? 'opacity-40 scale-95 border-dashed border-[#E00D42]'
-                                                : isOver
-                                                ? 'border-2 border-[#E00D42] ring-2 ring-[#E00D42]/20 scale-102'
-                                                : isPrimary
-                                                ? 'border-2 border-emerald-500 bg-emerald-50/20 shadow-xs'
-                                                : 'border-slate-200 hover:border-slate-300 bg-white'
-                                        }`}
+                            return (
+                                <li
+                                    key={item.id}
+                                    draggable
+                                    onDragStart={() => handleDragStart(index, isCreate)}
+                                    onDragOver={(e) => handleDragOver(e, index, isCreate)}
+                                    onDrop={() => handleDrop(index, isCreate)}
+                                    onDragEnd={() => handleDragEnd(isCreate)}
+                                    className={`group relative aspect-square cursor-grab select-none overflow-hidden rounded-card border bg-surface-100 active:cursor-grabbing ${
+                                        isPrimary ? 'col-span-2 row-span-2' : ''
+                                    } ${isBeingDragged ? 'opacity-40' : ''} ${isOver ? 'border-brand-500 ring-2 ring-brand-500/40' : 'border-line-200'}`}
+                                >
+                                    {item.url ? (
+                                        <img src={item.url} alt={item.name || `Photo ${index + 1}`} className="h-full w-full object-cover" />
+                                    ) : (
+                                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-center text-xs text-brand-700">
+                                            <ImageIcon className="h-5 w-5" />
+                                            <span>Unavailable. Remove and add again.</span>
+                                        </div>
+                                    )}
+                                    {isPrimary && <span className="absolute left-2 top-2 rounded bg-white px-2 py-0.5 text-xs font-semibold text-ink-900 shadow-sm">Cover</span>}
+                                    <button
+                                        type="button"
+                                        onClick={() => removeGalleryItem(index, isCreate)}
+                                        className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-control bg-white/95 text-ink-700 shadow-sm hover:text-brand-700"
+                                        title="Remove image"
+                                        aria-label={`Remove photo ${index + 1}`}
                                     >
-                                        <div className="relative w-full h-24 bg-slate-100 cursor-grab active:cursor-grabbing">
-                                            {item.url ? <img
-                                                src={item.url}
-                                                alt={item.name || `Image ${index + 1}`}
-                                                className="w-full h-full object-cover"
-                                            /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-rose-700 text-[10px] font-medium">
-                                                <ImageIcon className="w-5 h-5" />
-                                                <span>Unavailable; remove and upload again</span>
-                                            </div>}
-                                            <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
-                                                {isPrimary ? (
-                                                    <span className="bg-emerald-600 text-white font-bold text-[9px] font-sans uppercase px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
-                                                        <Star className="w-2.5 h-2.5 fill-current" />
-                                                        Cover
-                                                    </span>
-                                                ) : (
-                                                    <span className="bg-black/60 text-white font-sans font-bold text-[9px] px-1.5 py-0.5 rounded-md backdrop-blur-xs">
-                                                        #{index + 1}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeGalleryItem(index, isCreate)}
-                                                    className="p-1 rounded-md bg-black/60 hover:bg-rose-600 text-white transition backdrop-blur-xs"
-                                                    title="Remove image"
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                </button>
-                                            </div>
-                                            <div className="absolute bottom-1 right-1.5 p-0.5 text-white/80 drop-shadow-sm pointer-events-none">
-                                                <GripVertical className="w-3.5 h-3.5" />
-                                            </div>
-                                        </div>
-
-                                        {/* Drag indicator & quick cover action */}
-                                        <div className="px-2 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[10px] font-sans">
-                                            <span className="text-[9px] text-slate-400">
-                                                {isPrimary ? 'Main Cover' : `Slot #${index + 1}`}
-                                            </span>
-                                            {!isPrimary && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => moveGalleryItem(index, 'top', isCreate)}
-                                                    className="px-2 py-0.5 text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 rounded transition"
-                                                    title="Make primary cover"
-                                                >
-                                                    Set Cover
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                    {!isPrimary && (
+                                        <button
+                                            type="button"
+                                            onClick={() => moveGalleryItem(index, 'top', isCreate)}
+                                            className="absolute inset-x-2 bottom-2 rounded-control bg-white/95 px-2 py-1 text-xs font-semibold text-ink-900 opacity-100 shadow-sm hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+                                            title="Make primary cover"
+                                        >
+                                            Set as cover
+                                        </button>
+                                    )}
+                                </li>
+                            );
+                        })}
+                        {!full && imageMode === 'file' && (
+                            <li className="aspect-square">
+                                <button type="button" onClick={pickFiles} className="flex h-full w-full flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-line-300 text-ink-600 hover:border-brand-500 hover:text-ink-900">
+                                    <Plus className="h-5 w-5" />
+                                    <span className="text-xs font-semibold">Add photos</span>
+                                </button>
+                            </li>
+                        )}
+                    </ul>
                 )}
             </div>
         );
@@ -2140,7 +2045,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         setGallery((prev) => [...prev, newItem]);
                                         assignColorPhoto(isCreate, colorId, val, newItem.id, newIndex);
                                     }}
-                                    className="px-4 py-2 bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold rounded-xl uppercase transition shrink-0 font-sans"
+                                    className={buttonClasses('secondary', 'md', 'shrink-0')}
                                 >
                                     Attach URL
                                 </button>
@@ -2214,6 +2119,243 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
     const hasFilters = Object.keys(sellerInventoryQuery(filters)).length > 0;
 
+    /** Phones get stacked rows with the key facts; tapping a row opens the listing. */
+    const renderMobileListings = () => (
+        <ul className="divide-y divide-line-200 md:hidden" aria-label="Listings">
+            {products.data.length === 0 ? (
+                <li className="px-4 py-10 text-center">
+                    {hasFilters
+                        ? <><p className="text-sm text-ink-700">No listings match these filters.</p><button type="button" onClick={clearProductFilters} disabled={filtering} className={buttonClasses('secondary', 'sm', 'mt-3')}>Clear filters</button></>
+                        : <><p className="text-sm font-semibold text-ink-900">No products yet</p><button type="button" onClick={openCreate} className={buttonClasses('primary', 'sm', 'mt-3')}><Plus className="h-4 w-4" />List New Product</button></>}
+                </li>
+            ) : products.data.map(product => (
+                <li key={product.id} className="flex items-center gap-3 px-4 py-3">
+                    <input type="checkbox" aria-label={`Select ${product.name}`} disabled={actionPending} checked={selectedListings.includes(product.id)} onChange={() => toggleListing(product.id)} className="h-5 w-5 shrink-0 rounded border-line-300 text-brand-500 focus:ring-brand-500" />
+                    <button type="button" onClick={() => openEdit(product)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        {product.featured_image
+                            ? <img src={product.featured_image} alt="" className="h-14 w-14 shrink-0 rounded-control border border-line-200 bg-surface-100 object-cover" />
+                            : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-control border border-line-200 bg-surface-100 text-ink-400"><ImageIcon className="h-5 w-5" /></span>}
+                        <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold text-ink-900">{product.name}</span>
+                            <span className="mt-0.5 block text-sm font-semibold tabular-nums text-ink-900">{formatPrice(product.price)}</span>
+                            <span className="mt-1 flex items-center gap-2 text-xs text-ink-600">
+                                <Badge tone={product.status === 'active' ? 'success' : 'neutral'}>{product.status === 'active' ? 'Active' : product.status === 'draft' ? 'Draft' : 'Archived'}</Badge>
+                                <span className={`tabular-nums ${product.stock === 0 ? 'text-brand-700' : product.stock <= 5 ? 'text-warning' : ''}`}>{product.stock === 0 ? 'Sold out' : `${product.stock} in stock`}</span>
+                            </span>
+                        </span>
+                        <ChevronRight className="h-5 w-5 shrink-0 text-ink-400" />
+                    </button>
+                </li>
+            ))}
+        </ul>
+    );
+
+    type SharedListingField = 'name' | 'sub_category_id' | 'price' | 'compare_at_price' | 'stock' | 'purchase_limit' | 'sku' | 'description';
+    const setListingField = (isCreate: boolean, key: SharedListingField, value: string) => (isCreate ? createForm.setData(key, value) : editForm.setData(key, value));
+
+    /** New and edit listings share one centered dialog: photos first, then basics, price and stock, options, description and shipping details. */
+    const renderListingDialog = (isCreate: boolean) => {
+        const form = isCreate ? createForm : editForm;
+        const product = isCreate ? null : editingProduct;
+        const variants = isCreate ? createVariants : editVariants;
+        const hasOption1 = isCreate ? createHasOption1 : editHasOption1;
+        const hasOption2 = isCreate ? createHasOption2 : editHasOption2;
+        const slashedPriceError = isCreate ? createSlashedPriceError : editSlashedPriceError;
+        const draftNotice = isCreate ? createDraftNotice : editDraftNotice;
+        const draftSaved = isCreate ? createDraftSaved : editDraftSaved;
+        const close = isCreate ? closeCreate : closeEdit;
+        const prefix = isCreate ? 'create' : 'edit';
+        const combinedStock = variants.combinations ? variants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : null;
+        const department = shop.root_category?.name ?? categories[0]?.name ?? 'Department unavailable';
+        const isDraftProduct = product?.status === 'draft';
+        const section = 'space-y-4 border-t border-line-200 pt-6 first:border-t-0 first:pt-0';
+        const sectionTitle = 'text-base font-semibold text-ink-900';
+
+        return (
+            <div className="fixed inset-0 z-[9999] flex items-stretch justify-center font-sans sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby={`${prefix}-listing-title`}>
+                <div className="fixed inset-0 bg-brand-900/45" onClick={close} aria-hidden="true" />
+                <div className="relative z-10 flex h-full w-full max-w-4xl flex-col overflow-hidden bg-white text-ink-900 shadow-xl sm:h-auto sm:max-h-[calc(100vh-3rem)] sm:rounded-card">
+                    <header className="flex shrink-0 items-start justify-between gap-4 border-b border-line-200 px-4 py-4 sm:px-6">
+                        <div className="min-w-0">
+                            <h2 id={`${prefix}-listing-title`} className="truncate text-lg font-semibold text-ink-900">{isCreate ? 'New product' : 'Edit product'}</h2>
+                            {product && <p className="mt-0.5 truncate text-[13px] text-ink-600">{product.name} · SKU {product.sku || 'auto'}</p>}
+                        </div>
+                        <button type="button" onClick={close} title="Close" aria-label="Close" className="-mr-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-ink-500 hover:bg-surface-100 hover:text-ink-900">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </header>
+
+                    <form onSubmit={isCreate ? handleCreate : handleUpdate} className="flex min-h-0 flex-1 flex-col">
+                        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-6 text-sm sm:px-6">
+                            {draftNotice && <p role="status" className="rounded-control bg-info-soft px-3 py-2 text-[13px] text-info">{draftNotice}</p>}
+
+                            <section className={section} aria-label="Photos">
+                                {renderGalleryManager(isCreate)}
+                            </section>
+
+                            <section className={section} aria-label="Basics">
+                                <h3 className={sectionTitle}>Basics</h3>
+                                <div>
+                                    <label htmlFor={`${prefix}-name`} className={labelClasses}>Product title <span className="text-brand-700">*</span></label>
+                                    <input id={`${prefix}-name`} type="text" value={form.data.name} minLength={5} maxLength={120} required
+                                        onChange={(e) => setListingField(isCreate, 'name', e.target.value)}
+                                        placeholder="e.g. Canvas Weekend Tote, 30L"
+                                        className={inputClasses} />
+                                    {listingFeedback(isCreate, 'name')}
+                                </div>
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                    <div>
+                                        <span className={labelClasses}>Department</span>
+                                        <input type="hidden" name="category_id" value={shop.root_category_id ?? ''} />
+                                        <p className="flex h-10 items-center truncate text-sm font-medium text-ink-900" aria-label="Approved department, fixed for this shop">{department}</p>
+                                    </div>
+                                    <div>
+                                        <label htmlFor={`${prefix}-subcategory`} className={labelClasses}>Subcategory</label>
+                                        <select id={`${prefix}-subcategory`} value={form.data.sub_category_id} onChange={(e) => setListingField(isCreate, 'sub_category_id', e.target.value)} className={inputClasses}>
+                                            <option value="">Choose a subcategory</option>
+                                            {departmentSubCategories.map((sub) => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label htmlFor={`${prefix}-sku`} className={labelClasses}>SKU <span className="font-normal text-ink-500">optional</span></label>
+                                        <input id={`${prefix}-sku`} type="text" value={form.data.sku} maxLength={50}
+                                            onChange={(e) => setListingField(isCreate, 'sku', e.target.value.toUpperCase())}
+                                            placeholder="e.g. TOTE-30L" className={`${inputClasses} uppercase`} />
+                                    </div>
+                                </div>
+                                {product && (
+                                    <div className="sm:w-1/3 sm:pr-3">
+                                        <label htmlFor="edit-status" className={labelClasses}>Listing status</label>
+                                        {isDraftProduct ? (
+                                            <p id="edit-status" role="status" className="flex h-10 items-center text-sm text-ink-700">Draft, not visible to buyers</p>
+                                        ) : (
+                                            <select id="edit-status" value={editForm.data.status} onChange={(e) => editForm.setData('status', e.target.value as 'active' | 'draft' | 'archived')} className={inputClasses}>
+                                                <option value="active">Active, visible to buyers</option>
+                                                <option value="draft">Draft, hidden</option>
+                                                <option value="archived">Archived</option>
+                                            </select>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+
+                            <section className={section} aria-label="Price and stock">
+                                <h3 className={sectionTitle}>Price and stock</h3>
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div>
+                                        <label htmlFor={`${prefix}-price`} className={labelClasses}>Price (₱) <span className="text-brand-700">*</span></label>
+                                        <input id={`${prefix}-price`} type="text" inputMode="decimal" maxLength={10} required placeholder="0.00"
+                                            value={form.data.price}
+                                            onChange={(e) => { const value = acceptPriceDraft(e.target.value.trim()); if (value !== null) setListingField(isCreate, 'price', value); }}
+                                            className={`${inputClasses} tabular-nums`} />
+                                        {listingFeedback(isCreate, 'price')}
+                                    </div>
+                                    <div>
+                                        <label htmlFor={`${prefix}-compare`} className={labelClasses}>Original price <span className="font-normal text-ink-500">optional</span></label>
+                                        <input id={`${prefix}-compare`} type="text" inputMode="decimal" maxLength={11} placeholder="0.00"
+                                            value={form.data.compare_at_price} aria-invalid={slashedPriceError || undefined}
+                                            onChange={(e) => { const value = acceptPriceDraft(e.target.value.trim(), 99999999.99); if (value !== null) setListingField(isCreate, 'compare_at_price', value); }}
+                                            className={`${inputClasses} tabular-nums`} />
+                                        {slashedPriceError ? (
+                                            <p role="alert" className="mt-1.5 flex items-start gap-1 text-[13px] text-brand-700"><AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />Must be higher than {formatPrice(form.data.price)}</p>
+                                        ) : form.errors.compare_at_price ? (
+                                            <p role="alert" className="mt-1.5 text-[13px] text-brand-700">{form.errors.compare_at_price}</p>
+                                        ) : (
+                                            <p className="mt-1.5 text-xs text-ink-600">Shown crossed out</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label htmlFor={`${prefix}-stock`} className={labelClasses}>Stock <span className="text-brand-700">*</span></label>
+                                        <input id={`${prefix}-stock`} type="text" inputMode="numeric" maxLength={5} required
+                                            disabled={variants.combinations !== undefined}
+                                            value={combinedStock ?? form.data.stock}
+                                            onChange={(e) => { const value = acceptStockDraft(e.target.value.trim()); if (value !== null) setListingField(isCreate, 'stock', value); }}
+                                            className={`${inputClasses} tabular-nums`} />
+                                        {combinedStock !== null ? <p className="mt-1.5 text-xs text-ink-600">Total of the option rows below</p> : listingFeedback(isCreate, 'stock')}
+                                    </div>
+                                    <div>
+                                        <label htmlFor={`${prefix}Form-purchase-limit`} className={labelClasses}>Limit per buyer <span className="font-normal text-ink-500">optional</span></label>
+                                        <input id={`${prefix}Form-purchase-limit`} type="text" inputMode="numeric" maxLength={7} placeholder="No limit"
+                                            value={form.data.purchase_limit}
+                                            onChange={(e) => { const value = acceptWholeNumberDraft(e.target.value.trim(), 1000000, 1); if (value !== null) setListingField(isCreate, 'purchase_limit', value); }}
+                                            className={`${inputClasses} tabular-nums`} />
+                                        {form.errors.purchase_limit
+                                            ? <p role="alert" className="mt-1.5 text-[13px] text-brand-700">{form.errors.purchase_limit}</p>
+                                            : <p className="mt-1.5 text-xs text-ink-600">Units across all orders</p>}
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className={section} aria-label="Options">
+                                {renderVariantManager(isCreate)}
+                                <VariantStockMatrix colors={hasOption1 ? variants.colors : []} sizes={hasOption2 ? variants.sizes : []} value={variants.combinations}
+                                    pricingMode={variants.pricing_mode ?? (isCreate ? 'independent' : 'surcharge')}
+                                    onPricingModeChange={pricing_mode => { markDraftAuxDirty(isCreate); (isCreate ? setCreateVariants : setEditVariants)(previous => ({ ...previous, pricing_mode })); }}
+                                    basePrice={form.data.price} listingSku={form.data.sku} errors={form.errors}
+                                    onChange={combinations => { markDraftAuxDirty(isCreate); (isCreate ? setCreateVariants : setEditVariants)(previous => ({ ...previous, combinations })); }}
+                                    error={variantFeedback(isCreate)} />
+                            </section>
+
+                            <section className={section} aria-label="Description">
+                                <h3 className={sectionTitle}>Description</h3>
+                                <div>
+                                    <label htmlFor={`${prefix}-description`} className={labelClasses}>What buyers should know <span className="text-brand-700">*</span></label>
+                                    <textarea id={`${prefix}-description`} ref={isCreate ? createDescriptionRef : editDescriptionRef}
+                                        value={form.data.description} minLength={20} maxLength={3000} rows={4} required
+                                        onChange={(e) => setListingField(isCreate, 'description', e.target.value)}
+                                        onInput={(e) => resizeDescription(e.currentTarget)}
+                                        placeholder="Material, size, what is in the box, care and warranty."
+                                        className="block min-h-24 max-h-60 w-full resize-none overflow-y-hidden rounded-control border border-line-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/40" />
+                                    {listingFeedback(isCreate, 'description')}
+                                </div>
+                                <ListingAssistantPanel
+                                    productName={form.data.name}
+                                    category={categories.find(category => String(category.id) === String(form.data.category_id))?.name}
+                                    currentDetails={form.data.description}
+                                    onUseDescription={description => setListingField(isCreate, 'description', description)}
+                                />
+                            </section>
+
+                            <section className={section} aria-label="Shipping and details">
+                                <SellerListingDetails data={form.data} errors={form.errors} tags={storeTags} departmentName={department} productName={form.data.name}
+                                    onChange={(key, value) => (isCreate ? createForm.setData(current => ({ ...current, [key]: value })) : editForm.setData(current => ({ ...current, [key]: value })))} />
+                            </section>
+                            {isCreate && createForm.errors.request_token && <p role="alert" className="text-[13px] text-brand-700">{createForm.errors.request_token}</p>}
+                        </div>
+
+                        <footer className="flex shrink-0 flex-col-reverse gap-3 border-t border-line-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                            <div className="flex items-center gap-3">
+                                <button type="button" onClick={isCreate ? discardCreateDraft : discardEditDraft} className="inline-flex h-10 items-center rounded-control px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+                                    {isCreate ? 'Discard listing' : 'Discard changes'}
+                                </button>
+                                <span className="text-xs text-ink-500" aria-live="polite">{draftSaved ? 'Saved on this device' : 'Saves on this device as you type'}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                                <button type="button" onClick={close} className={buttonClasses('secondary', 'md', 'hidden sm:inline-flex')}>Close</button>
+                                {isCreate ? <>
+                                    <button type="submit" name="status" value="draft" formNoValidate disabled={createForm.processing || slashedPriceError} className={buttonClasses('secondary')}>Save draft</button>
+                                    <button type="submit" name="status" value="active" disabled={createForm.processing || slashedPriceError} className={buttonClasses('primary')}>
+                                        {createForm.processing ? 'Saving…' : 'Publish'}
+                                    </button>
+                                </> : <>
+                                    {isDraftProduct && <button type="submit" value="publish" disabled={editForm.processing || slashedPriceError} className={buttonClasses('primary', 'md', 'order-last sm:order-none')}>
+                                        <Check className="h-4 w-4" /><span>Publish</span>
+                                    </button>}
+                                    <button type="submit" value="update"
+                                        formNoValidate={isDraftProduct || editForm.data.status !== 'active'}
+                                        disabled={editForm.processing || slashedPriceError}
+                                        className={buttonClasses(isDraftProduct ? 'secondary' : 'primary', 'md', isDraftProduct ? '' : 'col-span-2')}>
+                                        {editForm.processing ? 'Saving…' : isDraftProduct ? 'Update Listing' : 'Save changes'}
+                                    </button>
+                                </>}
+                            </div>
+                        </footer>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <DashboardLayout
             title="Products"
@@ -2221,238 +2363,183 @@ export default function SellerProducts({ products, categories, shop, filters = {
         >
             <Head title="Products — BagooPH Seller" />
 
-            <div className="space-y-6 font-sans">
-                {filterError && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">{filterError}</p>}
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 shadow-2xs">
-                    <div>
-                        <h2 className="text-sm font-bold text-slate-900">Your product catalog</h2>
-                        <p className="mt-1 text-xs text-slate-500">Create a draft or publish a product listing.</p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={openCreate}
-                        className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-[#E00D42] px-4 py-2 text-xs font-bold uppercase text-white shadow-xs transition hover:bg-[#C20836]"
-                    >
-                        <Plus className="h-3.5 w-3.5" />
+            <div className="space-y-4 font-sans">
+                {filterError && <p role="alert" className="rounded-control bg-brand-50 px-3 py-2 text-[13px] text-brand-700">{filterError}</p>}
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-ink-600">
+                        <span className="font-semibold text-ink-900 tabular-nums">{products.total ?? products.data.length}</span> {(products.total ?? products.data.length) === 1 ? 'listing' : 'listings'}
+                        {hasFilters && <span> match these filters</span>}
+                    </p>
+                    <button type="button" onClick={openCreate} className={buttonClasses('primary')}>
+                        <Plus className="h-4 w-4" />
                         <span>List New Product</span>
                     </button>
                 </div>
-                
-                {/* Search and Stats Filter */}
-                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-300 shadow-2xs space-y-4">
-                    <div className="flex items-center gap-2 font-sans text-xs text-slate-600">
-                        <Package className="w-4 h-4 text-[#E00D42]" />
-                        <span>
-                            Showing <strong>{products.data.length}</strong> of <strong>{products.total ?? products.data.length}</strong> catalog listings
-                        </span>
-                    </div>
 
-                    <form onSubmit={submitProductSearch} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                        <div className="font-sans text-xs xl:col-span-2">
-                            <label htmlFor="inventory-search" className="mb-1.5 block font-bold text-slate-700">Search listings</label>
-                            <div className="relative">
-                                <input
-                                    id="inventory-search"
-                                    type="search"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    maxLength={100}
-                                    placeholder="Search all products by title or SKU..."
-                                    className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-300 rounded-sm text-slate-800 text-xs focus:ring-1 focus:ring-[#E00D42]"
-                                />
-                                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                                {searchQuery && (
-                                    <button
-                                        type="button"
-                                        onClick={clearProductSearch}
-                                        disabled={filtering}
-                                        className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 disabled:opacity-50"
-                                        aria-label="Clear product search"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        <div>
-                            <label htmlFor="inventory-category" className="mb-1.5 block text-xs font-bold text-slate-700">Category</label>
-                            <select id="inventory-category" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="w-full rounded-sm border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:ring-1 focus:ring-[#E00D42]">
-                                <option value="">All approved categories</option>
-                                {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="inventory-status" className="mb-1.5 block text-xs font-bold text-slate-700">Listing status</label>
-                            <select id="inventory-status" value={statusFilter} onChange={e => setStatusFilter(e.target.value as SellerInventoryFilters['status'])} className="w-full rounded-sm border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:ring-1 focus:ring-[#E00D42]">
-                                <option value="all">All listing statuses</option>
-                                <option value="active">Active</option>
-                                <option value="draft">Draft</option>
-                                <option value="archived">Archived</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="inventory-stock" className="mb-1.5 block text-xs font-bold text-slate-700">Available stock</label>
-                            <select id="inventory-stock" value={stockFilter} onChange={e => setStockFilter(e.target.value as SellerInventoryFilters['stock'])} className="w-full rounded-sm border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:ring-1 focus:ring-[#E00D42]">
-                                <option value="all">All stock levels</option>
-                                <option value="low_stock">Active: low stock (1–5)</option>
-                                <option value="out_of_stock">Active: out of stock (0)</option>
-                                <option value="in_stock">Active: in stock (1+)</option>
-                            </select>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:col-span-2 xl:col-span-5">
-                            <button
-                                type="submit"
-                                disabled={filtering}
-                                className="rounded-sm bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-[#E00D42] disabled:opacity-50"
-                            >
-                                {filtering ? 'Applying…' : 'Apply filters'}
+                <form onSubmit={submitProductSearch} className="grid grid-cols-2 gap-3 rounded-card border border-line-200 bg-white p-3 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]" aria-label="Filter listings">
+                    <div className="relative col-span-2 lg:col-span-1">
+                        <label htmlFor="inventory-search" className="sr-only">Search listings</label>
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+                        <input
+                            id="inventory-search"
+                            type="search"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            maxLength={100}
+                            placeholder="Search by title or SKU"
+                            className={`${inputClasses} pl-9 pr-9`}
+                        />
+                        {searchQuery && (
+                            <button type="button" onClick={clearProductSearch} disabled={filtering} className="absolute right-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-control text-ink-500 hover:text-ink-900 disabled:opacity-50" aria-label="Clear product search">
+                                <X className="h-4 w-4" />
                             </button>
-                            {hasFilters && <button type="button" onClick={clearProductFilters} disabled={filtering} className="rounded-sm border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Clear filters</button>}
-                            <p className="text-xs text-slate-500">Stock filters use active listing quantities. Drafts stay off the marketplace.</p>
-                        </div>
-                    </form>
-                </div>
+                        )}
+                    </div>
+                    <div className="col-span-2 lg:col-span-1">
+                        <label htmlFor="inventory-category" className="sr-only">Category</label>
+                        <select id="inventory-category" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className={inputClasses}>
+                            <option value="">All categories</option>
+                            {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="inventory-status" className="sr-only">Listing status</label>
+                        <select id="inventory-status" value={statusFilter} onChange={e => setStatusFilter(e.target.value as SellerInventoryFilters['status'])} className={inputClasses}>
+                            <option value="all">All statuses</option>
+                            <option value="active">Active</option>
+                            <option value="draft">Draft</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="inventory-stock" className="sr-only">Available stock</label>
+                        <select id="inventory-stock" value={stockFilter} onChange={e => setStockFilter(e.target.value as SellerInventoryFilters['stock'])} className={inputClasses}>
+                            <option value="all">All stock levels</option>
+                            <option value="low_stock">Active: low stock (1–5)</option>
+                            <option value="out_of_stock">Active: out of stock</option>
+                            <option value="in_stock">Active: in stock</option>
+                        </select>
+                    </div>
+                    <div className="col-span-2 flex gap-2 lg:col-span-1">
+                        <button type="submit" disabled={filtering} className={buttonClasses('secondary', 'md', 'flex-1 lg:flex-none')}>
+                            {filtering ? 'Applying…' : 'Apply'}
+                        </button>
+                        {hasFilters && <button type="button" onClick={clearProductFilters} disabled={filtering} className={buttonClasses('ghost', 'md', 'flex-1 lg:flex-none')}>Clear filters</button>}
+                    </div>
+                </form>
 
-                {bulkResults.length > 0 && <section aria-label="Product action results" className="rounded-xl border border-slate-300 bg-white p-4 text-xs"><h2 className="mb-2 font-bold text-slate-900">Selection results</h2><ul className="space-y-2">{bulkResults.map(result => <li key={result.id}><strong>{result.name}</strong>: {result.reason}</li>)}</ul></section>}
-                {selectedListings.length > 0 && <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-300 bg-white p-4 text-xs">
-                    <strong>{selectedListings.length} selected</strong>
-                    <button type="button" disabled={actionPending} onClick={() => setBulkAction('deactivate')} className="rounded-lg border border-slate-300 px-3 py-2 font-semibold disabled:opacity-50">Deactivate</button>
-                    <button type="button" disabled={actionPending} onClick={() => setBulkAction('delete')} className="rounded-lg border border-rose-300 px-3 py-2 font-semibold text-rose-700 disabled:opacity-50">Delete</button>
-                    {bulkAction && <div className="w-full border-t border-slate-300 pt-3" role="group" aria-label="Confirm product selection action"><p className="mb-3 text-slate-600">{bulkAction === 'delete' ? 'Products with unfinished orders will be skipped. Other saved references are archived to preserve their history. Unreferenced products can be deleted.' : 'Selected listings will stop accepting new purchases. Existing orders and history stay available.'}</p><button type="button" disabled={actionPending} onClick={runBulk} className="mr-2 rounded-lg bg-[#E00D42] px-3 py-2 font-bold text-white disabled:opacity-50">{actionPending ? 'Saving…' : 'Confirm selection'}</button><button type="button" disabled={actionPending} onClick={() => setBulkAction(null)} className="rounded-lg border border-slate-300 px-3 py-2">Cancel</button></div>}
+                {bulkResults.length > 0 && <section aria-label="Product action results" className="rounded-card border border-line-200 bg-white p-4 text-sm"><h2 className="mb-2 font-semibold text-ink-900">Selection results</h2><ul className="space-y-1 text-ink-700">{bulkResults.map(result => <li key={result.id}><strong className="font-semibold text-ink-900">{result.name}</strong>: {result.reason}</li>)}</ul></section>}
+                {selectedListings.length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-card border border-line-200 bg-white px-4 py-3 text-sm">
+                    <strong className="mr-2 font-semibold text-ink-900">{selectedListings.length} selected</strong>
+                    <button type="button" disabled={actionPending} onClick={() => setBulkAction('deactivate')} className={buttonClasses('secondary', 'sm')}>Deactivate</button>
+                    <button type="button" disabled={actionPending} onClick={() => setBulkAction('delete')} className={buttonClasses('danger', 'sm')}>Delete</button>
+                    <button type="button" disabled={actionPending} onClick={() => { setSelectedListings([]); setBulkAction(null); }} className={buttonClasses('ghost', 'sm')}>Clear selection</button>
+                    {bulkAction && <div className="w-full border-t border-line-200 pt-3" role="group" aria-label="Confirm product selection action"><p className="mb-3 text-ink-700">{bulkAction === 'delete' ? 'Products with unfinished orders will be skipped. Products with order history are archived instead of deleted.' : 'Selected listings stop accepting new orders. Existing orders and history stay.'}</p><div className="flex gap-2"><button type="button" disabled={actionPending} onClick={runBulk} className={buttonClasses('primary', 'sm')}>{actionPending ? 'Saving…' : 'Confirm selection'}</button><button type="button" disabled={actionPending} onClick={() => setBulkAction(null)} className={buttonClasses('secondary', 'sm')}>Cancel</button></div></div>}
                 </div>}
-                {/* Products Table Box */}
-                <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs font-sans">
-                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+
+                <div className="overflow-hidden rounded-card border border-line-200 bg-white">
+                    {renderMobileListings()}
+                    <div className="hidden overflow-x-auto md:block">
+                        <table className="w-full min-w-[720px] text-left text-sm">
+                            <thead className="border-b border-line-200 bg-surface-50 text-xs font-medium uppercase tracking-wide text-ink-600">
                                 <tr>
-                                    <th className="w-10 py-4 pl-4"><input type="checkbox" aria-label="Select this page" disabled={!products.data.length || actionPending} checked={products.data.length > 0 && products.data.every(product => selectedListings.includes(product.id))} onChange={e => setSelectedListings(e.target.checked ? products.data.map(product => product.id) : [])} className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /></th>
-                                    <th className="py-4 px-6">Product Details</th>
-                                    <th className="py-4 px-4">Master Department</th>
-                                    <th className="py-4 px-4">Listing Price</th>
-                                    <th className="py-4 px-4">Available Stock</th>
-                                    <th className="py-4 px-4">Status</th>
-                                    <th className="py-4 px-4">Completed Units</th>
-                                    <th className="py-4 px-6 text-right">Actions</th>
+                                    <th scope="col" className="w-12 py-3 pl-4"><input type="checkbox" aria-label="Select this page" disabled={!products.data.length || actionPending} checked={products.data.length > 0 && products.data.every(product => selectedListings.includes(product.id))} onChange={e => setSelectedListings(e.target.checked ? products.data.map(product => product.id) : [])} className="rounded border-line-300 text-brand-500 focus:ring-brand-500" /></th>
+                                    <th scope="col" className="py-3 pr-4">Product</th>
+                                    <th scope="col" className="w-28 px-4 py-3 text-right">Price</th>
+                                    <th scope="col" className="w-28 px-4 py-3 text-right">Stock</th>
+                                    <th scope="col" className="w-20 px-4 py-3 text-right">Sold</th>
+                                    <th scope="col" className="w-28 px-4 py-3">Status</th>
+                                    <th scope="col" className="w-40 py-3 pl-2 pr-4 text-right"><span className="sr-only">Actions</span></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-line-200">
                                 {products.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="py-12 text-center text-slate-400">
-                                            {hasFilters
-                                                ? 'No listings match these filters. Clear or change the filters to see other products.'
-                                                : 'No products have been listed yet.'}
+                                        <td colSpan={7} className="px-4 py-12 text-center">
+                                            {hasFilters ? (
+                                                <><p className="text-sm text-ink-700">No listings match these filters.</p><button type="button" onClick={clearProductFilters} disabled={filtering} className={buttonClasses('secondary', 'sm', 'mt-3')}>Clear filters</button></>
+                                            ) : (
+                                                <><p className="text-sm font-semibold text-ink-900">No products yet</p><p className="mt-1 text-sm text-ink-600">Your listings appear here once you add them.</p><button type="button" onClick={openCreate} className={buttonClasses('primary', 'sm', 'mt-3')}><Plus className="h-4 w-4" />List New Product</button></>
+                                            )}
                                         </td>
                                     </tr>
                                 ) : (
-                                    products.data.map((product) => (
-                                        <tr key={product.id} className="hover:bg-slate-50 transition">
-                                            <td className="pl-4"><input type="checkbox" aria-label={`Select ${product.name}`} disabled={actionPending} checked={selectedListings.includes(product.id)} onChange={() => toggleListing(product.id)} className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /></td>
-                                            <td className="py-4 px-6">
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <img
-                                                        src={product.featured_image || ''}
-                                                        alt={product.name}
-                                                        className="w-14 h-14 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
-                                                    />
-                                                    <div className="space-y-0.5 min-w-0">
-                                                        <p className="font-bold text-slate-900 text-xs font-sans truncate max-w-xs">{product.name}</p>
-                                                        {product.compliance_restricted && <div className="mt-2 max-w-sm rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800">
-                                                            <p className="font-semibold">Restricted from new purchases</p>
-                                                            <p className="mt-1 whitespace-pre-line">{product.compliance_feedback?.reason ?? 'Ask Platform Admin to review this restriction.'}</p>
-                                                            <p className="mt-2">{product.compliance_feedback?.next_action ?? 'Editing or publishing does not lift this restriction.'}</p>
-                                                        </div>}
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <p className="text-[11px] text-slate-400 font-sans">SKU: {product.sku || 'AUTO'}</p>
-                                                            {product.variants && ((product.variants.colors && product.variants.colors.length > 0) || (product.variants.sizes && product.variants.sizes.length > 0)) && (
-                                                                <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-sans text-[9px] font-bold">
-                                                                    {[
-                                                                        product.variants.colors?.length ? `${product.variants.colors.length} Colors` : null,
-                                                                        product.variants.sizes?.length ? `${product.variants.sizes.length} Sizes` : null
-                                                                    ].filter(Boolean).join(' • ')}
-                                                                </span>
+                                    products.data.map((product) => {
+                                        const optionCount = (product.variants?.combinations?.length) || ((product.variants?.colors?.length ?? 0) + (product.variants?.sizes?.length ?? 0));
+                                        const stockTone = product.stock > 5 ? 'text-ink-900' : product.stock > 0 ? 'text-warning' : 'text-brand-700';
+                                        const reserved = Number(product.open_order_units || 0);
+                                        const statusTone: BadgeTone = product.status === 'active' ? 'success' : 'neutral';
+                                        return (
+                                            <tr key={product.id} className="align-middle hover:bg-surface-50">
+                                                <td className="py-3 pl-4"><input type="checkbox" aria-label={`Select ${product.name}`} disabled={actionPending} checked={selectedListings.includes(product.id)} onChange={() => toggleListing(product.id)} className="rounded border-line-300 text-brand-500 focus:ring-brand-500" /></td>
+                                                <td className="max-w-0 py-3 pr-4">
+                                                    <div className="flex min-w-0 items-center gap-3">
+                                                        {product.featured_image
+                                                            ? <img src={product.featured_image} alt="" className="h-12 w-12 shrink-0 rounded-control border border-line-200 bg-surface-100 object-cover" />
+                                                            : <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-control border border-line-200 bg-surface-100 text-ink-400"><ImageIcon className="h-5 w-5" /></span>}
+                                                        <div className="min-w-0">
+                                                            <button type="button" onClick={() => openEdit(product)} className="block max-w-full truncate text-left font-semibold text-ink-900 hover:underline" title={product.name}>{product.name}</button>
+                                                            <p className="mt-0.5 truncate text-xs text-ink-600">
+                                                                {[product.sub_category?.name, product.sku ? `SKU ${product.sku}` : null, optionCount ? `${optionCount} options` : null].filter(Boolean).join(' · ') || 'No SKU'}
+                                                            </p>
+                                                            {product.compliance_restricted && (
+                                                                <details className="mt-1 max-w-sm text-xs text-brand-700">
+                                                                    <summary className="cursor-pointer font-semibold">Restricted from new purchases</summary>
+                                                                    <p className="mt-1 whitespace-pre-line">{product.compliance_feedback?.reason ?? 'Ask Platform Admin to review this restriction.'}</p>
+                                                                    <p className="mt-1">{product.compliance_feedback?.next_action ?? 'Editing or publishing does not lift this restriction.'}</p>
+                                                                </details>
                                                             )}
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 px-4 text-slate-600 font-medium">
-                                                <div className="text-xs font-semibold text-slate-800">{product.category?.name || 'Curated Department'}</div>
-                                                {product.sub_category && (
-                                                    <span className="inline-block mt-0.5 text-[10px] text-[#E00D42] font-bold bg-rose-50 border border-rose-100 rounded px-1.5 py-0.2">
-                                                        {product.sub_category.name}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="py-4 px-4 font-black text-slate-900 font-sans text-sm">
-                                                {formatPrice(product.price)}
-                                            </td>
-                                            <td className="py-4 px-4">
-                                                <div className="space-y-1">
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-semibold tabular-nums text-ink-900">{formatPrice(product.price)}</td>
+                                                <td className="px-4 py-3 text-right">
                                                     <button
                                                         type="button"
                                                         onClick={() => product.variants?.combinations ? openEdit(product) : openStockEditor(product)}
                                                         aria-label={`Update available stock for ${product.name}`}
-                                                        className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition hover:shadow-xs ${
-                                                            product.stock > 5 ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500' : (product.stock > 0 ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-500' : 'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-500')
-                                                        }`}
+                                                        className={`inline-flex items-center gap-1 rounded-control border border-line-300 px-2 py-1 font-semibold tabular-nums hover:border-ink-400 hover:bg-surface-100 ${stockTone}`}
                                                     >
-                                                        <Box className="h-3 w-3" />
-                                                        {product.stock} available
+                                                        {product.stock}<ChevronRight className="h-3.5 w-3.5 text-ink-400" />
                                                     </button>
-                                                    <p className="text-[10px] text-slate-500">
-                                                        {Number(product.open_order_units || 0)} reserved in open orders · Click to update
-                                                    </p>
-                                                    {product.variants?.combinations ? <details className="text-[11px] text-slate-600"><summary className="cursor-pointer font-semibold">Combination stock</summary><ul className="mt-2 space-y-1">{product.variants.combinations.map((row, index) => <li key={index}>{[row.color, row.size].filter(Boolean).join(' / ')}: <strong>{row.stock}</strong> available</li>)}</ul></details> : product.variants?.sizes?.length ? <details className="text-[11px] text-slate-600">
-                                                        <summary className="cursor-pointer font-semibold hover:text-[#E00D42]">{product.variants.option2_name || 'Variant'} quantities ({product.variants.sizes.length})</summary>
-                                                        <ul className="mt-2 space-y-1">
-                                                            {product.variants.sizes.map((variant, index) => <li key={variant.id || index}>{variant.name}: <strong>{sellerVariantStock(variant.stock, product.stock)}</strong>{variant.stock == null ? ' (listing stock)' : ' available'}</li>)}
-                                                        </ul>
-                                                    </details> : null}
-                                                    {product.variants?.colors?.length ? <details className="text-[11px] text-slate-600">
-                                                        <summary className="cursor-pointer font-semibold hover:text-[#E00D42]">{product.variants.option1_name || 'Color'} availability ({product.variants.colors.length})</summary>
-                                                        <ul className="mt-2 space-y-1">
-                                                            {product.variants.colors.map((variant, index) => <li key={variant.id || index}>{variant.name}: {variant.in_stock === false ? 'Unavailable' : 'Available'}</li>)}
-                                                        </ul>
-                                                    </details> : null}
-                                                </div>
-                                            </td>
-                                            <td className="py-4 px-4">
-                                                <span className="capitalize text-[11px] font-bold text-slate-700">
-                                                    {product.status}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-4 text-slate-500 font-medium">
-                                                {Number(product.completed_units || 0)} completed
-                                            </td>
-                                            <td className="py-4 px-6 text-right space-x-1">
-                                                <button type="button" disabled={actionPending} onClick={() => duplicateListing(product)} title="Duplicate as draft" aria-label={`Duplicate ${product.name} as draft`} className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-50"><Copy className="h-4 w-4" /></button>
-                                                <Link href={route('seller.products.sales.index', product.id)} className="inline-flex rounded-lg px-2 py-2 text-xs font-bold text-[#E00D42] hover:bg-rose-50">Sales</Link>
-                                                <button
-                                                    onClick={() => openEdit(product)}
-                                                    className="p-2 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition"
-                                                    title="Edit Product"
-                                                >
-                                                    <Edit3 className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(product)}
-                                                    className="p-2 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition"
-                                                    title="Remove Product"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                    {(product.stock <= 5 || reserved > 0) && (
+                                                        <p className="mt-1 whitespace-nowrap text-xs text-ink-600">{product.stock === 0 ? 'Sold out' : product.stock <= 5 ? 'Low stock' : `${reserved} reserved`}</p>
+                                                    )}
+                                                    {(product.variants?.combinations?.length || product.variants?.sizes?.length || product.variants?.colors?.length) ? (
+                                                        <details className="mt-1 text-left text-xs text-ink-700">
+                                                            <summary className="cursor-pointer text-right font-medium text-ink-600 hover:text-ink-900">By option</summary>
+                                                            <ul className="mt-1 space-y-0.5">
+                                                                {product.variants?.combinations
+                                                                    ? product.variants.combinations.map((row, index) => <li key={index}>{[row.color, row.size].filter(Boolean).join(' / ')}: <strong>{row.stock}</strong> available</li>)
+                                                                    : <>
+                                                                        {product.variants?.sizes?.map((variant, index) => <li key={variant.id || index}>{variant.name}: <strong>{sellerVariantStock(variant.stock, product.stock)}</strong>{variant.stock == null ? ' (listing stock)' : ' available'}</li>)}
+                                                                        {product.variants?.colors?.map((variant, index) => <li key={variant.id || index}>{variant.name}: {variant.in_stock === false ? 'Unavailable' : 'Available'}</li>)}
+                                                                    </>}
+                                                            </ul>
+                                                        </details>
+                                                    ) : null}
+                                                </td>
+                                                <td className="px-4 py-3 text-right tabular-nums text-ink-700">{Number(product.completed_units || 0)}</td>
+                                                <td className="px-4 py-3"><Badge tone={statusTone}>{product.status === 'active' ? 'Active' : product.status === 'draft' ? 'Draft' : 'Archived'}</Badge></td>
+                                                <td className="py-3 pl-2 pr-4">
+                                                    <div className="flex items-center justify-end gap-0.5">
+                                                        <Link href={route('seller.products.sales.index', product.id)} className={buttonClasses('ghost', 'sm')}>Sales</Link>
+                                                        <button type="button" onClick={() => openEdit(product)} className={'inline-flex h-8 w-8 items-center justify-center rounded-control text-ink-600 hover:bg-surface-100 hover:text-ink-900 disabled:opacity-50'} title="Edit Product" aria-label={`Edit ${product.name}`}><Edit3 className="h-4 w-4" /></button>
+                                                        <button type="button" disabled={actionPending} onClick={() => duplicateListing(product)} title="Duplicate as draft" aria-label={`Duplicate ${product.name} as draft`} className={'inline-flex h-8 w-8 items-center justify-center rounded-control text-ink-600 hover:bg-surface-100 hover:text-ink-900 disabled:opacity-50'}><Copy className="h-4 w-4" /></button>
+                                                        <button type="button" onClick={() => handleDelete(product)} className="inline-flex h-8 w-8 items-center justify-center rounded-control text-ink-600 hover:bg-brand-50 hover:text-brand-700" title="Remove Product" aria-label={`Remove ${product.name}`}><Trash2 className="h-4 w-4" /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
                     </div>
                     {products.last_page > 1 && (
-                        <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                            <p className="text-xs text-slate-500">
+                        <div className="flex flex-col gap-3 border-t border-line-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-[13px] text-ink-600">
                                 Page <strong>{products.current_page}</strong> of <strong>{products.last_page}</strong>
                             </p>
                             <nav className="flex flex-wrap items-center gap-1.5" aria-label="Product catalog pagination">
@@ -2468,10 +2555,10 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             only={listProps}
                                             preserveState
                                             preserveScroll
-                                            className={`min-w-8 rounded-sm border px-3 py-1.5 text-center text-xs font-bold transition ${
+                                            className={`inline-flex h-8 min-w-8 items-center justify-center rounded-control border px-3 text-[13px] font-semibold tabular-nums ${
                                                 link.active
-                                                    ? 'border-[#E00D42] bg-[#E00D42] text-white'
-                                                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'
+                                                    ? 'border-brand-500 bg-brand-50 text-brand-700'
+                                                    : 'border-line-300 bg-white text-ink-700 hover:bg-surface-100'
                                             }`}
                                         >
                                             {label}
@@ -2479,7 +2566,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     ) : (
                                         <span
                                             key={`${label}-${index}`}
-                                            className="min-w-8 cursor-not-allowed rounded-sm border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-xs font-bold text-slate-400"
+                                            className="inline-flex h-8 min-w-8 cursor-not-allowed items-center justify-center rounded-control border border-line-200 px-3 text-[13px] text-ink-400"
                                         >
                                             {label}
                                         </span>
@@ -2548,14 +2635,13 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                 </label>
                                 <input
                                     id="stock-quantity"
-                                    type="number"
-                                    min={stockForm.data.mode === 'add' ? 1 : 0}
-                                    max={99999}
-                                    step={1}
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={5}
                                     required
                                     autoFocus
                                     value={stockForm.data.quantity}
-                                    onChange={(event) => stockForm.setData('quantity', event.target.value)}
+                                    onChange={(event) => { const value = acceptWholeNumberDraft(event.target.value.trim(), 99999, stockForm.data.mode === 'add' ? 1 : 0); if (value !== null) stockForm.setData('quantity', value); }}
                                     className="w-full rounded-sm border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-950 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                                 />
                                 {stockForm.errors.quantity && (
@@ -2661,538 +2747,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
             )}
 
             {/* Create Product Slide-Over Sidebar Drawer */}
-            {typeof document !== 'undefined' && isCreateOpen && createPortal(
-                <div className="fixed inset-0 z-[9999] flex justify-end font-sans overflow-hidden">
-                    {/* Backdrop */}
-                    <div 
-                        className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-fade-in transition-opacity cursor-pointer"
-                        onClick={closeCreate}
-                    />
-
-                    {/* Right Drawer Panel: Full Screen on Small Devices, Right Slide-Over on Desktop */}
-                    <div className="relative w-full max-w-full lg:max-w-2xl xl:max-w-3xl bg-white text-slate-900 h-full shadow-2xl border-l-0 lg:border-l border-slate-200 flex flex-col z-10 animate-slide-in-right">
-                        {/* Sticky Drawer Header */}
-                        <div className="px-6 sm:px-8 py-5 sm:py-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-2xs">
-                            <div className="flex items-center gap-3.5 sm:gap-4">
-                                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-rose-50 text-[#E00D42] flex items-center justify-center shrink-0 border border-rose-100 shadow-xs">
-                                    <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-base sm:text-lg text-slate-900 leading-tight">
-                                        New Product Listing
-                                    </h3>
-                                    <p className="text-xs text-slate-500 font-sans mt-1">
-                                        Add listing details, then save a private draft or publish.
-                                    </p>
-                                </div>
-                            </div>
-                            <button 
-                                type="button"
-                                onClick={closeCreate}
-                                className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
-                                title="Close sidebar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        {/* Scrollable Form & Sticky Footer */}
-                        <form onSubmit={handleCreate} className="flex-1 flex flex-col min-h-0">
-                            <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-7 sm:py-9 space-y-7 sm:space-y-8 text-xs font-sans">
-                                {createDraftNotice && <p role="status" className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">{createDraftNotice}</p>}
-                                {/* Top Section: Catalog Details & Pricing */}
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/80">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-[#E00D42]" />
-                                            <span className="font-bold text-xs uppercase tracking-wider text-slate-800 font-sans">
-                                                Basic Information & Inventory
-                                            </span>
-                                        </div>
-                                        <span className="text-[10px] text-slate-400 font-sans">Primary Details</span>
-                                    </div>
-
-                                    <div>
-                                        <label className="block font-bold text-slate-700 uppercase mb-2">
-                                            Product Title <span className="text-[#E00D42]">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={createForm.data.name}
-                                            minLength={5}
-                                            maxLength={120}
-                                            onChange={(e) => createForm.setData('name', e.target.value)}
-                                            placeholder="e.g. Bagoo Urban Nomad Tactical Duffel 45L"
-                                            required
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-sm font-sans placeholder:font-sans placeholder:text-xs placeholder:text-slate-400 transition"
-                                        />
-                                        {listingFeedback(true, 'name')}
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">
-                                                Approved Department
-                                            </label>
-                                            <input type="hidden" name="category_id" value={shop.root_category_id ?? ''} />
-                                            <div className="rounded-xl border border-slate-300 bg-slate-100 px-3.5 py-3 text-xs sm:text-sm font-semibold text-slate-800 truncate" aria-label="Approved department, fixed for this shop">{shop.root_category?.name ?? categories[0]?.name ?? 'Department unavailable'}</div>
-                                        </div>
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">
-                                                Subcategory / Niche
-                                            </label>
-                                            <select
-                                                value={createForm.data.sub_category_id}
-                                                onChange={(e) => createForm.setData('sub_category_id', e.target.value)}
-                                                className="w-full px-3 sm:px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-xs font-sans transition"
-                                            >
-                                                <option value="">Select Subcategory (Recommended)</option>
-                                                {departmentSubCategories.map((sub) => (
-                                                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
-                                                <span className="text-[10px] text-slate-400 font-sans">Optional</span>
-                                            </div>
-                                            <input
-                                                type="text"
-                                                value={createForm.data.sku}
-                                                onChange={(e) => createForm.setData('sku', e.target.value.toUpperCase())}
-                                                placeholder="e.g. BGO-DUFFEL-45L"
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs placeholder:text-slate-400 transition uppercase"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">
-                                                Price (₱) <span className="text-[#E00D42]">*</span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                inputMode="decimal"
-                                                maxLength={10}
-                                                value={createForm.data.price}
-                                                onChange={(e) => { const value = acceptPriceDraft(e.target.value); if (value !== null) createForm.setData('price', value); }}
-                                                required
-                                                placeholder="1299.00"
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                            />
-                                            {listingFeedback(true, 'price')}
-                                        </div>
-                                        <div>
-                                            <label className={`block font-bold uppercase mb-2 ${createSlashedPriceError ? 'text-rose-600' : 'text-slate-700'}`}>
-                                                Slashed Price (₱)
-                                            </label>
-                                            <input
-                                                type="text"
-                                                inputMode="decimal"
-                                                maxLength={11}
-                                                value={createForm.data.compare_at_price}
-                                                onChange={(e) => { const value = acceptPriceDraft(e.target.value, 99999999.99); if (value !== null) createForm.setData('compare_at_price', value); }}
-                                                placeholder="1799.00"
-                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:ring-1 transition font-sans text-xs ${
-                                                    createSlashedPriceError
-                                                        ? 'border-rose-500 ring-1 ring-rose-500 focus:border-rose-500 focus:ring-rose-500 bg-rose-50/30'
-                                                        : 'border-slate-200 focus:ring-[#E00D42]'
-                                                }`}
-                                            />
-                                            {createSlashedPriceError && (
-                                                <p className="mt-1.5 text-[11px] text-rose-600 font-sans flex items-center gap-1">
-                                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                                    <span>Must be higher than listing price ({formatPrice(createForm.data.price)})</span>
-                                                </p>
-                                            )}
-                                            {createForm.errors.compare_at_price && (
-                                                <p className="mt-1.5 text-[11px] text-rose-600 font-sans">{createForm.errors.compare_at_price}</p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">
-                                                Warehouse Stock <span className="text-[#E00D42]">*</span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                disabled={createVariants.combinations !== undefined}
-                                                maxLength={5}
-                                                value={createVariants.combinations ? createVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : createForm.data.stock}
-                                                onChange={(e) => { const value = acceptStockDraft(e.target.value); if (value !== null) createForm.setData('stock', value); }}
-                                                required
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                            />
-                                            {listingFeedback(true, 'stock')}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Dynamic Product Variant & Options Builder */}
-                                {renderVariantManager(true)}
-                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} pricingMode={createVariants.pricing_mode ?? 'independent'} onPricingModeChange={pricing_mode => { markDraftAuxDirty(true); setCreateVariants(previous => ({ ...previous, pricing_mode })); }} basePrice={createForm.data.price} listingSku={createForm.data.sku} errors={createForm.errors} onChange={combinations => { markDraftAuxDirty(true); setCreateVariants(previous => ({ ...previous, combinations })); }} error={variantFeedback(true)} />
-                                <div className="rounded-lg border border-slate-300 p-4">
-                                    <label className="block text-sm font-bold text-slate-900" htmlFor="createForm-purchase-limit">Purchase limit per buyer</label>
-                                    <input id="createForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={createForm.data.purchase_limit} onChange={event => createForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                                    <p className="mt-2 text-xs text-slate-600">Leave blank for no limit. Counts units across all orders for this product; cancelled orders release the allowance.</p>
-                                    {createForm.errors.purchase_limit && <p className="mt-1 text-sm text-rose-700">{createForm.errors.purchase_limit}</p>}
-                                </div>
-
-                                {renderGalleryManager(true)}
-
-                                <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-2">Product Description & Specs</label>
-                                    <textarea
-                                        ref={createDescriptionRef}
-                                        value={createForm.data.description}
-                                        minLength={20}
-                                        maxLength={3000}
-                                        onChange={(e) => createForm.setData('description', e.target.value)}
-                                        onInput={(e) => resizeDescription(e.currentTarget)}
-                                        rows={3}
-                                        required
-                                        placeholder="Provide detailed material specifications, size measurements, and warranty details..."
-                                        className="w-full min-h-[88px] max-h-[240px] resize-none overflow-y-hidden px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                    />
-                                    {listingFeedback(true, 'description')}
-                                    <ListingAssistantPanel
-                                        productName={createForm.data.name}
-                                        category={categories.find(category => String(category.id) === String(createForm.data.category_id))?.name}
-                                        currentDetails={createForm.data.description}
-                                        onUseDescription={description => createForm.setData('description', description)}
-                                    />
-                                </div>
-                                {createForm.errors.request_token && <p role="alert" className="text-sm text-rose-700">{createForm.errors.request_token}</p>}
-                                <SellerListingDetails data={createForm.data} errors={createForm.errors} tags={storeTags} departmentName={shop.root_category?.name ?? categories[0]?.name ?? ''} productName={createForm.data.name} onChange={(key, value) => createForm.setData(current => ({ ...current, [key]: value }))} />
-
-                            </div>
-
-                            {/* Sticky Action Footer */}
-                            <div className="px-6 sm:px-8 py-4 sm:py-5 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0 sticky bottom-0 z-20">
-                                <div className="text-xs text-slate-500 font-sans min-w-0">
-                                    {createForm.data.name ? (
-                                        <span className="truncate max-w-[140px] sm:max-w-xs block font-bold text-slate-800">
-                                            {createForm.data.name}
-                                        </span>
-                                    ) : (
-                                        <span>Complete required details to save or publish.</span>
-                                    )}
-                                    <span className="mt-1 block text-[10px] text-slate-500">{createDraftSaved ? 'Saved on this device.' : 'Saved automatically after 3 seconds idle.'}</span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2.5">
-                                    <button
-                                        type="button"
-                                        onClick={closeCreate}
-                                        className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-sans font-bold rounded-xl uppercase transition text-xs shadow-2xs"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={discardCreateDraft}
-                                        className="px-3 py-2.5 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 font-sans font-bold rounded-xl transition text-xs"
-                                    >
-                                        Discard local recovery
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        name="status"
-                                        value="draft"
-                                        formNoValidate
-                                        disabled={createForm.processing || createSlashedPriceError}
-                                        className="px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-sans font-bold rounded-xl transition disabled:opacity-50 text-xs"
-                                    >
-                                        Save draft
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        name="status"
-                                        value="active"
-                                        disabled={createForm.processing || createSlashedPriceError}
-                                        className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold rounded-xl uppercase shadow-sm transition disabled:opacity-50 text-xs flex items-center gap-1.5"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        <span>{createForm.processing ? 'Saving…' : 'Publish'}</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            {/* Edit Product Slide-Over Sidebar Drawer */}
-            {typeof document !== 'undefined' && editingProduct && createPortal(
-                <div className="fixed inset-0 z-[9999] flex justify-end font-sans overflow-hidden">
-                    {/* Backdrop */}
-                    <div 
-                        className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-fade-in transition-opacity cursor-pointer"
-                        onClick={closeEdit}
-                    />
-
-                    {/* Right Drawer Panel: Full Screen on Small Devices, Right Slide-Over on Desktop */}
-                    <div className="relative w-full max-w-full lg:max-w-2xl xl:max-w-3xl bg-white text-slate-900 h-full shadow-2xl border-l-0 lg:border-l border-slate-200 flex flex-col z-10 animate-slide-in-right">
-                        {/* Sticky Drawer Header */}
-                        <div className="px-6 sm:px-8 py-5 sm:py-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-2xs">
-                            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0 border border-indigo-100 shadow-xs">
-                                    <Edit3 className="w-5 h-5 sm:w-6 sm:h-6" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="font-bold text-base sm:text-lg text-slate-900 truncate max-w-sm sm:max-w-md">
-                                        Edit Product: {editingProduct.name}
-                                    </h3>
-                                    <p className="text-xs text-slate-500 font-sans mt-1">
-                                        SKU: {editingProduct.sku || 'AUTO'} • ID #{editingProduct.id}
-                                    </p>
-                                </div>
-                            </div>
-                            <button 
-                                type="button"
-                                onClick={closeEdit}
-                                className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
-                                title="Close sidebar"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        {/* Scrollable Form & Sticky Footer */}
-                        <form onSubmit={handleUpdate} className="flex-1 flex flex-col min-h-0">
-                            <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-7 sm:py-9 space-y-7 sm:space-y-8 text-xs font-sans">
-                                {editDraftNotice && <p role="status" className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">{editDraftNotice}</p>}
-                                {/* Top Section: Catalog Details & Pricing */}
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/80">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-indigo-600" />
-                                            <span className="font-bold text-xs uppercase tracking-wider text-slate-800 font-sans">
-                                                Basic Information & Inventory
-                                            </span>
-                                        </div>
-                                        <span className="text-[10px] text-slate-400 font-sans">Product #{editingProduct.id}</span>
-                                    </div>
-
-                                    <div>
-                                        <label className="block font-bold text-slate-700 uppercase mb-2">
-                                            Product Title <span className="text-[#E00D42]">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={editForm.data.name}
-                                            minLength={5}
-                                            maxLength={120}
-                                            onChange={(e) => editForm.setData('name', e.target.value)}
-                                            required
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-sm font-sans transition"
-                                        />
-                                        {listingFeedback(false, 'name')}
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">Status</label>
-                                            {editingProduct.status === 'draft' ? (
-                                                <div role="status" className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
-                                                    Draft · Update keeps this private. Use Publish when it is ready for buyers.
-                                                </div>
-                                            ) : (
-                                                <select
-                                                    value={editForm.data.status}
-                                                    onChange={(e) => editForm.setData('status', e.target.value as any)}
-                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                                >
-                                                    <option value="active">Active Listing</option>
-                                                    <option value="draft">Draft Mode</option>
-                                                    <option value="archived">Archived</option>
-                                                </select>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">
-                                                Warehouse Stock <span className="text-[#E00D42]">*</span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                disabled={editVariants.combinations !== undefined}
-                                                maxLength={5}
-                                                value={editVariants.combinations ? editVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : editForm.data.stock}
-                                                onChange={(e) => { const value = acceptStockDraft(e.target.value); if (value !== null) editForm.setData('stock', value); }}
-                                                required
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                            />
-                                            {listingFeedback(false, 'stock')}
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">
-                                                Price (₱) <span className="text-[#E00D42]">*</span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                inputMode="decimal"
-                                                maxLength={10}
-                                                value={editForm.data.price}
-                                                onChange={(e) => { const value = acceptPriceDraft(e.target.value); if (value !== null) editForm.setData('price', value); }}
-                                                required
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                            />
-                                            {listingFeedback(false, 'price')}
-                                        </div>
-                                        <div>
-                                            <label className={`block font-bold uppercase mb-2 ${editSlashedPriceError ? 'text-rose-600' : 'text-slate-700'}`}>
-                                                Slashed Price (₱)
-                                            </label>
-                                            <input
-                                                type="text"
-                                                inputMode="decimal"
-                                                maxLength={11}
-                                                value={editForm.data.compare_at_price}
-                                                onChange={(e) => { const value = acceptPriceDraft(e.target.value, 99999999.99); if (value !== null) editForm.setData('compare_at_price', value); }}
-                                                placeholder="1799.00"
-                                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:ring-1 transition font-sans text-xs ${
-                                                    editSlashedPriceError
-                                                        ? 'border-rose-500 ring-1 ring-rose-500 focus:border-rose-500 focus:ring-rose-500 bg-rose-50/30'
-                                                        : 'border-slate-200 focus:ring-[#E00D42]'
-                                                }`}
-                                            />
-                                            {editSlashedPriceError && (
-                                                <p className="mt-1.5 text-[11px] text-rose-600 font-sans flex items-center gap-1">
-                                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                                    <span>Must be higher than listing price ({formatPrice(editForm.data.price)})</span>
-                                                </p>
-                                            )}
-                                            {editForm.errors.compare_at_price && (
-                                                <p className="mt-1.5 text-[11px] text-rose-600 font-sans">{editForm.errors.compare_at_price}</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">Approved Department</label>
-                                            <input type="hidden" name="category_id" value={shop.root_category_id ?? ''} />
-                                            <div className="rounded-xl border border-slate-300 bg-slate-100 px-3.5 py-3 text-xs sm:text-sm font-semibold text-slate-800 truncate" aria-label="Approved department, fixed for this shop">{shop.root_category?.name ?? categories[0]?.name ?? 'Department unavailable'}</div>
-                                        </div>
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">Subcategory / Niche</label>
-                                            <select
-                                                value={editForm.data.sub_category_id}
-                                                onChange={(e) => editForm.setData('sub_category_id', e.target.value)}
-                                                className="w-full px-3 sm:px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-xs font-sans transition"
-                                            >
-                                                <option value="">Select Subcategory (Recommended)</option>
-                                                {departmentSubCategories.map((sub) => (
-                                                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
-                                                <span className="text-[10px] text-slate-400 font-sans">Optional</span>
-                                            </div>
-                                            <input
-                                                type="text"
-                                                value={editForm.data.sku}
-                                                onChange={(e) => editForm.setData('sku', e.target.value.toUpperCase())}
-                                                placeholder="e.g. BGO-DUFFEL-45L"
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs placeholder:text-slate-400 transition uppercase"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Dynamic Product Variant & Options Builder */}
-                                {renderVariantManager(false)}
-                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} pricingMode={editVariants.pricing_mode ?? 'surcharge'} onPricingModeChange={pricing_mode => { markDraftAuxDirty(false); setEditVariants(previous => ({ ...previous, pricing_mode })); }} basePrice={editForm.data.price} listingSku={editForm.data.sku} errors={editForm.errors} onChange={combinations => { markDraftAuxDirty(false); setEditVariants(previous => ({ ...previous, combinations })); }} error={variantFeedback(false)} />
-                                <div className="rounded-lg border border-slate-300 p-4">
-                                    <label className="block text-sm font-bold text-slate-900" htmlFor="editForm-purchase-limit">Purchase limit per buyer</label>
-                                    <input id="editForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={editForm.data.purchase_limit} onChange={event => editForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                                    <p className="mt-2 text-xs text-slate-600">Leave blank for no limit. Counts units across all orders for this product; cancelled orders release the allowance.</p>
-                                    {editForm.errors.purchase_limit && <p className="mt-1 text-sm text-rose-700">{editForm.errors.purchase_limit}</p>}
-                                </div>
-
-                                {renderGalleryManager(false)}
-
-                                <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-2">Description</label>
-                                    <textarea
-                                        ref={editDescriptionRef}
-                                        value={editForm.data.description}
-                                        minLength={20}
-                                        maxLength={3000}
-                                        onChange={(e) => editForm.setData('description', e.target.value)}
-                                        onInput={(e) => resizeDescription(e.currentTarget)}
-                                        rows={3}
-                                        required
-                                        className="w-full min-h-[88px] max-h-[240px] resize-none overflow-y-hidden px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                    />
-                                    {listingFeedback(false, 'description')}
-                                    <ListingAssistantPanel
-                                        productName={editForm.data.name}
-                                        category={categories.find(category => String(category.id) === String(editForm.data.category_id))?.name}
-                                        currentDetails={editForm.data.description}
-                                        onUseDescription={description => editForm.setData('description', description)}
-                                    />
-                                </div>
-                                <SellerListingDetails data={editForm.data} errors={editForm.errors} tags={storeTags} departmentName={shop.root_category?.name ?? categories[0]?.name ?? ''} productName={editForm.data.name} onChange={(key, value) => editForm.setData(current => ({ ...current, [key]: value }))} />
-
-                            </div>
-
-                            {/* Sticky Action Footer */}
-                            <div className="px-6 sm:px-8 py-4 sm:py-5 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0 sticky bottom-0 z-20">
-                                <div className="text-xs text-slate-500 font-sans min-w-0">
-                                    <span>Status: <strong className="capitalize text-slate-800">{editForm.data.status}</strong></span>
-                                    <span className="mt-1 block text-[10px] text-slate-500">{editDraftSaved ? 'Saved on this device.' : 'Saved automatically after 3 seconds idle.'}</span>
-                                </div>
-                                <div className="flex flex-wrap items-center justify-end gap-2.5">
-                                    <button
-                                        type="button"
-                                        onClick={closeEdit}
-                                        className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-sans font-bold rounded-xl uppercase transition text-xs shadow-2xs"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={discardEditDraft}
-                                        className="px-3 py-2.5 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 font-sans font-bold rounded-xl transition text-xs"
-                                    >
-                                        Discard local recovery
-                                    </button>
-                                    {editingProduct.status === 'draft' && <button
-                                        type="submit"
-                                        value="publish"
-                                        disabled={editForm.processing || editSlashedPriceError}
-                                        className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold rounded-xl uppercase shadow-sm transition disabled:opacity-50 text-xs flex items-center gap-1.5"
-                                    >
-                                        <Check className="w-4 h-4" />
-                                        <span>Publish</span>
-                                    </button>}
-                                    <button
-                                        type="submit"
-                                        value="update"
-                                        formNoValidate={editingProduct.status === 'draft' || editForm.data.status !== 'active'}
-                                        disabled={editForm.processing || editSlashedPriceError}
-                                        className={`px-6 py-2.5 font-sans font-bold rounded-xl uppercase shadow-sm transition disabled:opacity-50 text-xs flex items-center gap-1.5 ${editingProduct.status === 'draft' ? 'border border-slate-300 bg-white text-slate-800 hover:bg-slate-100' : 'bg-[#E00D42] text-white hover:bg-[#C20836]'}`}
-                                    >
-                                        <Check className="w-4 h-4" />
-                                        <span>Update Listing</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>,
-                document.body
-            )}
+            {typeof document !== 'undefined' && isCreateOpen && createPortal(renderListingDialog(true), document.body)}
+            {typeof document !== 'undefined' && editingProduct && createPortal(renderListingDialog(false), document.body)}
 
             {/* Dedicated Variant Photo Picker Modal */}
             {renderPhotoPickerModal()}
