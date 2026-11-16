@@ -127,3 +127,9 @@ test('return finance navigation is available once per authorized owner and hidde
  const floor=await render(ui.Dashboard,{title:'Hub',children:null},{...seller,role:'logistics',canManageReturnLiabilities:false});
  assert.doesNotMatch(floor,/href="\/return-liabilities"/);
 });
+test('a hub full-access account sees Team in the hub menu and workers do not', async () => {
+ const lead=await render(ui.Dashboard,{title:'Hub',children:null},{...seller,role:'logistics',canManageTeam:true});
+ assert.match(lead,/href="[^"]*\/team"[^>]*>[\s\S]*?>Team<\/span>/);
+ const worker=await render(ui.Dashboard,{title:'Hub',children:null},{...seller,role:'logistics',canManageTeam:false});
+ assert.doesNotMatch(worker,/href="[^"]*\/team"/);
+});
