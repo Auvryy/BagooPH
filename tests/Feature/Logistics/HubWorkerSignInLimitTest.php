@@ -36,4 +36,23 @@ class HubWorkerSignInLimitTest extends TestCase
         }
         $this->postJson('/api/v1/logistics/auth/tokens', ['email' => $first->email, 'password' => 'Password1234', 'device_name' => 'Hub phone'])->assertStatus(429);
     }
+
+    public function test_one_busy_worker_does_not_use_up_the_limit_for_coworkers_on_the_same_wifi(): void
+    {
+        $parcel = $this->flowDelivery($this->newFlowOrder('ready_for_pickup'), 'unassigned');
+        $hub = LogisticsHub::findOrFail($parcel->origin_bayan_hub_id);
+        $tokens = collect(range(1, 2))->map(function () use ($hub) {
+            $worker = $this->createApprovedUser('logistics');
+            $worker->forceFill(['password' => 'Password1234', 'must_change_password' => false])->save();
+            HubHandler::create(['user_id' => $worker->id, 'logistics_company_id' => $hub->logistics_company_id, 'hub_id' => $hub->id,
+                'job_role' => HubHandler::JOB_ROLE_ALL, 'role_title' => HubHandler::roleTitleFor(HubHandler::JOB_ROLE_ALL), 'is_active' => true]);
+
+            return $this->postJson('/api/v1/logistics/auth/tokens', ['email' => $worker->email, 'password' => 'Password1234', 'device_name' => 'Hub phone'])->json('data.token');
+        });
+        foreach (range(1, 60) as $request) {
+            $this->withToken($tokens[0])->getJson('/api/v1/logistics/mother-bags?hub_id='.$hub->id)->assertOk();
+        }
+        $this->withToken($tokens[0])->getJson('/api/v1/logistics/mother-bags?hub_id='.$hub->id)->assertStatus(429);
+        $this->withToken($tokens[1])->getJson('/api/v1/logistics/mother-bags?hub_id='.$hub->id)->assertOk();
+    }
 }

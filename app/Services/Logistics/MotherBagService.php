@@ -266,6 +266,17 @@ class MotherBagService
                     throw new DomainException('This parcel belongs on a different route. Keep it at its recorded hub and check the next stop.');
                 }
                 if ($action === 'add') {
+                    // Bagging a parcel for its next Mother Hub is its line-haul sort: record that sort first, so the bag
+                    // packs the sorted custody and can seal and leave without a separate sort scan.
+                    if ($parcel->status === OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB
+                        && (app(LogisticsRoutingEngine::class)->getDynamicScanPrompt($parcel, $hub)['action'] ?? null) === 'SORT_TO_LINE_HAUL'
+                        && ! MotherBagParcel::where('active_delivery_id', $parcel->id)->exists()) {
+                        $parcel = app(OrderStateMachineService::class)->transition($parcel, OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL, $actor, [
+                            'hub_id' => $hub->id, 'barcode' => $data['barcode'], 'location_name' => "{$hub->name} ({$hub->code})",
+                            'facility_code' => $hub->code, 'scan_action' => 'SORT_TO_LINE_HAUL', 'expected_status' => $parcel->status,
+                            'notes' => 'Sorted by packing into Mother Bag '.$bag->reference.'.',
+                        ])->fresh(['order']);
+                    }
                     if (MotherBagParcel::where('active_delivery_id', $parcel->id)->exists()) {
                         throw new DomainException('This parcel is already inside another active Mother Bag.');
                     }
