@@ -126,7 +126,7 @@ class SellerListingDetailsTest extends TestCase
         $order = Order::sole();
         $item = $order->items()->sole();
         $this->assertSame(2, $order->logistics_flow_version);
-        $this->assertSame('60.00', $order->shipping_fee);
+        $this->assertSame('70.00', $order->shipping_fee); // 25x18x10 cm bills as 2 kg volumetric.
         $this->assertSame('0.80', $item->declared_weight_kg);
         $this->assertSame(2, $item->quantity);
         $product->update(['weight_kg' => '9.99']);
@@ -134,6 +134,6 @@ class SellerListingDetailsTest extends TestCase
         $this->assertDatabaseCount('orders', 1);
         $this->assertSame('0.80', $item->fresh()->declared_weight_kg);
         $this->actingAs($this->shop->user)->get('/seller/orders')->assertOk()->assertInertia(fn (Assert $page) => $page->where('orders.data.0.items.0.declared_weight_kg', '0.80'));
-        $this->assertSame('60.00', $order->fresh()->shipping_fee);
+        $this->assertSame('70.00', $order->fresh()->shipping_fee);
     }
 }

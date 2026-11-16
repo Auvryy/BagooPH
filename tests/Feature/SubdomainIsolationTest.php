@@ -213,15 +213,17 @@ class SubdomainIsolationTest extends TestCase
             'password' => 'password123',
         ]);
 
+        // The shared domain serves every role's sign-in page; the buyer form signs in as the buyer account type.
         $response = $this->postJson('http://bagooph.shop/login', [
             'email' => $seller->email,
             'password' => 'password123',
+            'role' => 'buyer',
         ]);
 
         $this->assertGuest();
         $response->assertStatus(422);
         $response->assertJsonValidationErrors([
-            'email' => 'Role mismatch: Non-buyer accounts cannot access the Buyer Marketplace portal.',
+            'email' => 'Email or password is incorrect for your buyer account.',
         ]);
     }
 

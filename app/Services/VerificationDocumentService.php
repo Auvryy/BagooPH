@@ -122,7 +122,10 @@ class VerificationDocumentService
             $document = ['path' => $path, 'sha256' => null, 'mime' => null, 'valid' => false];
             if ($path && preg_match('/\Akyc_documents\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp|pdf)\z/i', $path, $matches) === 1 && Storage::disk('local')->exists($path)) {
                 $localPath = Storage::disk('local')->path($path);
-                $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($localPath);
+                // One shared detector: each new finfo loads the whole magic database (several MB).
+                static $finfo;
+                $finfo ??= new \finfo(FILEINFO_MIME_TYPE);
+                $mime = $finfo->file($localPath);
                 $expected = match (strtolower($matches[1])) {
                     'jpg', 'jpeg' => 'image/jpeg',
                     'png' => 'image/png',

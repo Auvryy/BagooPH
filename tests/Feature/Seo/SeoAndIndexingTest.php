@@ -39,12 +39,8 @@ class SeoAndIndexingTest extends TestCase
             'status' => 'active',
         ]);
 
-        $category = Category::create([
-            'name' => 'Seo Category',
-            'parent_id' => $shop->root_category_id,
-            'slug' => 'seo-category',
-            'is_active' => true,
-        ]);
+        // Products live in the shop's approved department (flat catalogue).
+        $category = Category::findOrFail($shop->root_category_id);
 
         $activeProduct = Product::create([
             'shop_id' => $shop->id,

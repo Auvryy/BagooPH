@@ -123,8 +123,8 @@ class SellerInventoryTest extends TestCase
         $foreign = Category::factory()->create();
         $this->postJson($portal.'/products', $this->listing(['category_id' => $foreign->id]))
             ->assertUnprocessable()->assertJsonValidationErrors('category_id');
-        $child = Category::factory()->create(['parent_id' => $this->shop->root_category_id, 'is_active' => false]);
-        $this->postJson($portal.'/products', $this->listing(['category_id' => $child->id]))
+        $grandchild = Category::factory()->create(['parent_id' => Category::factory()->create(['parent_id' => $this->shop->root_category_id])->id]);
+        $this->postJson($portal.'/products', $this->listing(['category_id' => $grandchild->id]))
             ->assertUnprocessable()->assertJsonValidationErrors('category_id');
         $this->assertDatabaseCount('products', 0);
     }
@@ -222,13 +222,13 @@ class SellerInventoryTest extends TestCase
     #[DataProvider('portals')]
     public function test_combined_filters_search_all_owned_listings_and_retain_stable_page_order(string $portal): void
     {
-        $category = Category::factory()->create(['parent_id' => $this->shop->root_category_id, 'is_active' => true]);
+        $category = Category::findOrFail($this->shop->root_category_id);
         $rows = Product::factory()->count(13)->create([
             'shop_id' => $this->shop->id, 'category_id' => $category->id, 'name' => 'BGO-FILTER Carrier',
             'status' => 'active', 'stock' => 5, 'updated_at' => now()->subDay(),
         ]);
         Product::factory()->create(['shop_id' => $this->shop->id, 'category_id' => $category->id, 'name' => 'BGO-FILTER Carrier', 'status' => 'draft', 'stock' => 2]);
-        Product::factory()->create(['shop_id' => $this->shop->id, 'name' => 'BGO-FILTER Carrier', 'status' => 'active', 'stock' => 1]);
+        Product::factory()->create(['shop_id' => $this->shop->id, 'category_id' => Category::factory()->create()->id, 'name' => 'BGO-FILTER Carrier', 'status' => 'active', 'stock' => 1]);
         Product::factory()->create(['shop_id' => $this->shop->id, 'category_id' => $category->id, 'name' => 'BGO-FILTER Carrier', 'stock' => 6]);
         Product::factory()->create(['name' => 'BGO-FILTER Carrier', 'stock' => 5]);
         $filters = ['search' => '  bgo-filter  ', 'category_id' => $category->id, 'status' => 'active', 'stock' => 'low_stock'];
