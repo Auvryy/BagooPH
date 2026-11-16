@@ -639,7 +639,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                         })}
                                                     </div>
                                                 ) : (
-                                                    <p className="rounded-control bg-warning-soft p-3 text-[13px] text-warning">No truck with a driver at {bag.source.name}. Assign one in Fleet.</p>
+                                                    <p className="rounded-control bg-warning-soft p-3 text-[13px] text-warning">No available truck at {bag.source.name}. Assign a driver in Fleet and have the rider go on duty. <Link href={route('hub.fleet', { hub_id: bag.source.id })} className="font-semibold underline">Open Fleet &amp; drivers</Link></p>
                                                 )}
                                             </fieldset>
                                             {Object.values(send.errors).map((message, index) => <p key={index} role="alert" className="text-sm text-brand-700">{message}</p>)}

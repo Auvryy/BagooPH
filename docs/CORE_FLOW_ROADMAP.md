@@ -1,5 +1,46 @@
 # BagooPH Core Flow Roadmap
 
+## November 17: newly registered truck dispatch and driver selection
+
+Vehicle registration previously saved no driver; seeded trucks had both the
+fleet driver and the matching courier-profile vehicle link, with the driver on
+duty. Fleet now offers an Assigned driver selector when adding a vehicle or
+editing an unassigned vehicle. Candidates are approved existing riders already
+working at the selected company/hub. Both links and placement history commit
+together; a safe same-hub switch releases the old truck's driver link and retains
+the rider's existing duty choice. Pending/unassociated riders still need their
+accepted hub offer first. Active delivery/manifest/trip work blocks switching;
+off-duty riders remain off duty. Existing occupied trucks require separate
+assignment review before replacing their driver.
+
+New Mother Hub vehicles default to a wing truck (8,000 kg), while child hubs
+default to a feeder van (1,200 kg); changing a new vehicle's assigned hub updates
+these defaults. Existing vehicle edits retain saved specifications. Fleet
+explains that its assigned hub is the sending/home hub; the receiving hub belongs
+to the manifest or Mother Bag. Mother-to-Mother trips use wing trucks and feeder
+legs use closed vans. Multiple trucks and separate drivers may serve the same
+route. A driver has one fleet vehicle at a time.
+
+Mother Bag picker eligibility now also requires an operational on-duty driver
+without active rider work or an unreceived transport, matching the manifest and
+server dispatch checks. Both empty pickers explain driver/duty requirements and
+link to Fleet. No synthetic driver or approval record is created.
+
+Scoped assessment: new-truck assignment-to-dispatch **4/10 to 8/10**. The full
+focused fleet/hiring/manifest/Mother Bag regression run passed **93 tests / 4,248
+assertions**. Six final new-fleet cases passed **61 assertions**, including two
+trucks preparing the same route, actual manifest preparation, correct sending
+hub/type filtering, off-duty exclusion, driver switching, busy-driver rejection
+and atomic rollback. The real web/phone Mother Bag test now obtains its trucks
+through the same fleet registration service before sealing/loading/dispatching.
+Earlier overlapping fleet checks passed 12 tests / 331 assertions; do not sum
+these runs as unique coverage. Frontend logistics checks passed **18 tests**.
+Production build, PHP formatting and desktop/phone Fleet screenshots passed;
+source-aware defaults and assigned-driver choices were checked in the browser.
+Full TypeScript still reports only the four unrelated existing errors documented
+below. No new migration or seeding is required for this fix.
+
+
 ## November 17: hub applications and existing-rider invitations
 
 Courier signup now offers an optional working-hub selector and explicit profile

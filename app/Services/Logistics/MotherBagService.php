@@ -394,8 +394,11 @@ class MotherBagService
 
         return LogisticsFleet::ready()->where('logistics_company_id', $hub->logistics_company_id)->where('hub_id', $hub->id)->whereIn('vehicle_type', $types)
             ->whereNotNull('assigned_driver_id')
+            ->whereHas('driver.courierProfile', fn ($profile) => $profile->operational()->where('is_available', true))
+            ->whereNotIn('assigned_driver_id', LogisticsManifest::awaitingPhysicalReceipt()->select('driver_id'))
             ->whereNotIn('id', LogisticsManifest::awaitingPhysicalReceipt()->whereNotNull('vehicle_id')->select('vehicle_id'))
             ->with('driver:id,name')->orderBy('plate_number')->get()
+            ->reject(fn ($vehicle) => Delivery::riderHasActiveWork($vehicle->assigned_driver_id))
             ->map(fn (LogisticsFleet $vehicle) => ['id' => $vehicle->id, 'hub_id' => $vehicle->hub_id, 'plate' => $vehicle->plate_number,
                 'type' => $vehicle->vehicle_type, 'driver' => $vehicle->driver?->name])->values()->all();
     }

@@ -8,6 +8,7 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\MotherBag;
 use App\Models\User;
+use App\Services\Logistics\HubFleetService;
 use App\Services\Logistics\MotherBagService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -50,11 +51,12 @@ class OneScanIntakeAndBagDispatchTest extends TestCase
     private function truck(LogisticsHub $hub): LogisticsFleet
     {
         $driver = $this->createApprovedUser('courier');
-        $truck = LogisticsFleet::create(['logistics_company_id' => $hub->logistics_company_id, 'hub_id' => $hub->id,
-            'plate_number' => 'ONE-'.Str::upper(Str::random(4)), 'vehicle_type' => 'l300_van', 'model' => 'Feeder van', 'capacity_kg' => 1000,
-            'assigned_driver_id' => $driver->id, 'status' => 'active']);
         $driver->courierProfile->update(['logistics_company_id' => $hub->logistics_company_id, 'assigned_hub_id' => $hub->id,
-            'vehicle_id' => $truck->id, 'is_available' => true]);
+            'vehicle_id' => null, 'is_available' => true]);
+        // Exercise the same registration/driver-linking service used by Fleet, rather than seed-only links.
+        $truck = app(HubFleetService::class)->register($hub->company->user, $hub, [
+            'plate_number' => 'ONE-'.Str::upper(Str::random(4)), 'vehicle_type' => 'l300_van',
+            'model' => 'Feeder van', 'capacity_kg' => 1200, 'driver_id' => $driver->id]);
 
         return $truck;
     }

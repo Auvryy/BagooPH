@@ -291,7 +291,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             />
                                         ) : (
                                             <HubNextStep title={`No available ${requiredVehicleType === 'wing_truck' ? 'wing truck' : 'closed van'} at this sending hub`} tone="warning">
-                                                <p>An eligible assigned driver and vehicle are required. Ask the company manager to review Fleet & drivers.</p>
+                                                <p>Assign an approved driver to a truck at the sending hub, then have the rider go on duty.</p><Link href={route('hub.fleet', { hub_id: creation.data.source_hub_id })} className="mt-2 inline-block font-semibold text-brand-700 underline">Open Fleet &amp; drivers</Link>
                                             </HubNextStep>
                                         )
                                     ) : (
