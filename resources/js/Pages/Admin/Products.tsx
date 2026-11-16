@@ -51,7 +51,7 @@ export default function AdminProducts({ products, moderationBaseUrl, filters = {
             {select('stock', 'Any stock', [['low', 'Low (1–5)'], ['out', 'Out of stock']])}
         </div>
         <div className="mb-3 flex items-center justify-between text-sm text-ink-600">
-            <span>{products.total ?? products.data.length} product{(products.total ?? products.data.length) === 1 ? '' : 's'}{active ? ' match these filters' : ''}</span>
+            <span>{products.total ?? products.data.length} product{(products.total ?? products.data.length) === 1 ? '' : 's'}{active ? ((products.total ?? products.data.length) === 1 ? ' matches these filters' : ' match these filters') : ''}</span>
             {active && <button type="button" onClick={() => { setSearch(''); router.get(moderationBaseUrl, {}, { preserveScroll: true, replace: true }); }} className="font-semibold text-ink-700 underline">Clear filters</button>}
         </div>
         <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-xs">
