@@ -620,7 +620,7 @@ class LogisticsHubWorkstationController extends Controller
         $fleet->register($request->user(), $hub, $request->all());
 
         return redirect()->route('hub.fleet', ['hub_id' => $hub->id])
-            ->with('success', 'Vehicle added. Assign a driver through your hub team before dispatch.');
+            ->with('success', 'Vehicle added. An assigned driver must be on duty before dispatch.');
     }
 
     public function updateFleet(Request $request, LogisticsFleet $vehicle, HubFleetService $fleet): RedirectResponse
@@ -665,6 +665,8 @@ class LogisticsHubWorkstationController extends Controller
             return [
                 'id' => $f->id,
                 'hub_id' => $f->hub_id,
+                'assigned_driver_id' => $f->assigned_driver_id,
+                'driver_on_duty' => (bool) $driver?->courierProfile?->is_available,
                 'edit_token' => HubFleetService::stateToken($f),
                 'plate_number' => $f->plate_number,
                 'vehicle_type' => $f->vehicle_type,
@@ -690,7 +692,8 @@ class LogisticsHubWorkstationController extends Controller
         return Inertia::render('Hub/Fleet', [
             'canRegisterVehicle' => $activeHub && app(HubFleetService::class)->canRegister($user, $activeHub),
             'vehicleDefaults' => HubFleetService::DEFAULT_CAPACITIES,
-            'assignmentHubs' => $activeHub ? app(HubFleetService::class)->destinations($user, $activeHub)->map(fn ($hub) => ['id' => $hub->id, 'name' => $hub->name, 'code' => $hub->code]) : [],
+            'drivers' => $activeHub ? app(HubFleetService::class)->drivers($user, $activeHub) : [],
+            'assignmentHubs' => $activeHub ? app(HubFleetService::class)->destinations($user, $activeHub)->map(fn ($hub) => ['id' => $hub->id, 'name' => $hub->name, 'code' => $hub->code, 'tier' => $hub->tier]) : [],
             'activeHub' => $activeHub,
             'hubs' => $hubs,
             'fleet' => $fleet,
