@@ -122,21 +122,24 @@ class RegionalLogisticsDemoSeeder extends Seeder
         $key = strtolower($code);
         $operator = $this->account($key.'.operator', $name.' Operator', 'logistics');
         HubHandler::firstOrCreate(['user_id' => $operator->id, 'hub_id' => $hub->id], ['role_title' => 'Facility Operator', 'is_active' => true]);
-        foreach ($parent ? ['pickup', 'delivery', 'transport'] : ['transport'] as $duty) {
-            $driver = $this->account($key.'.'.$duty, $name.' '.ucfirst($duty).' Rider', 'courier');
+        // Mother hubs also run Mother-to-Mother line-haul, which needs a wing truck and its own driver.
+        $vehicles = ['transport' => ['l300_van', 'Demo closed transfer van', 1200, 'Closed van'],
+            'linehaul' => ['wing_truck', 'Demo line-haul wing truck', 8000, 'Wing truck']];
+        foreach ($parent ? ['pickup', 'delivery', 'transport'] : ['transport', 'linehaul'] as $duty) {
+            $driver = $this->account($key.'.'.$duty, $name.' '.($duty === 'linehaul' ? 'Line-haul Driver' : ucfirst($duty).' Rider'), 'courier');
             $plate = $code.'-'.strtoupper(substr($duty, 0, 1));
+            [$type, $model, $capacity] = $vehicles[$duty] ?? ['motorcycle', 'Demo delivery motorcycle', 40];
             $fleet = LogisticsFleet::firstOrCreate(['plate_number' => $plate], [
                 'logistics_company_id' => $company->id, 'hub_id' => $hub->id,
-                'assigned_driver_id' => $driver->id, 'vehicle_type' => $duty === 'transport' ? 'l300_van' : 'motorcycle',
-                'model' => $duty === 'transport' ? 'Demo closed transfer van' : 'Demo delivery motorcycle',
-                'capacity_kg' => $duty === 'transport' ? 1200 : 40, 'status' => 'active',
+                'assigned_driver_id' => $driver->id, 'vehicle_type' => $type,
+                'model' => $model, 'capacity_kg' => $capacity, 'status' => 'active',
             ]);
             if ($fleet->assigned_driver_id !== $driver->id || $fleet->hub_id !== $hub->id || $fleet->logistics_company_id !== $company->id) {
                 throw new RuntimeException('Reserved demo vehicle assignment conflicts with existing records.');
             }
             $profile = CourierProfile::firstOrCreate(['user_id' => $driver->id], [
                 'logistics_company_id' => $company->id, 'assigned_hub_id' => $hub->id,
-                'vehicle_id' => $fleet->id, 'vehicle_type' => $duty === 'transport' ? 'Closed van' : 'Motorcycle',
+                'vehicle_id' => $fleet->id, 'vehicle_type' => $vehicles[$duty][3] ?? 'Motorcycle',
                 'plate_number' => $plate, 'license_number' => 'DEMO-'.$plate, 'or_cr_status' => 'Verified', 'is_available' => true,
             ]);
             if ($profile->vehicle_id !== $fleet->id || $profile->assigned_hub_id !== $hub->id || $profile->logistics_company_id !== $company->id) {

@@ -8,6 +8,7 @@ use App\Models\Message;
 use App\Models\User;
 use App\Services\Courier\RiderTaskService;
 use App\Services\Finance\CodCashService;
+use App\Services\Logistics\LogisticsRateService;
 use App\Services\Notifications\NotificationDeliveryService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\RiderAccountService;
@@ -343,7 +344,9 @@ class RiderConnectedApiTest extends TestCase
         $handler = $this->flowHandler($parcel->destinationBayanHub);
         $due = (string) $cash->expected_cents;
         $this->getJson('/api/v1/rider/cash/'.$cash->id)->assertOk()->assertJsonPath('data.own_held_cents', $due)
-            ->assertJsonPath('data.collected_cents', $due)->assertJsonPath('data.earnings.confirmed_cents', '0')->assertJsonPath('data.earnings.pending_cents', '2500');
+            ->assertJsonPath('data.collected_cents', $due)->assertJsonPath('data.earnings.confirmed_cents', '0')
+            // Pending earnings are the rider's share of the order's own saved shipping allocation.
+            ->assertJsonPath('data.earnings.pending_cents', (string) app(LogisticsRateService::class)->purchasedShippingSplit($parcel->order)['delivery']);
         $body = ['expected_version' => (string) $cash->version, 'recipient_id' => (string) $handler->id,
             'amount' => (string) $parcel->order->total_amount, 'evidence_reference' => 'RIDER-CASH-001'];
         $this->key();
@@ -363,7 +366,7 @@ class RiderConnectedApiTest extends TestCase
         $command($admin, 'receive', ['offer_reference' => $nextOffer->reference, 'received_amount' => (string) $parcel->order->total_amount]);
         $command($admin, 'reconcile', []);
         $this->getJson('/api/v1/rider/cash/'.$cash->id)->assertOk()->assertJsonPath('data.status', 'reconciled')->assertJsonPath('data.reconciled_cents', $due);
-        $this->getJson('/api/v1/rider/cash')->assertOk()->assertJsonPath('data.summary.own_held_cents', '0')->assertJsonPath('data.earnings.available', true)->assertJsonPath('data.earnings.confirmed_cents', '2500');
+        $this->getJson('/api/v1/rider/cash')->assertOk()->assertJsonPath('data.summary.own_held_cents', '0')->assertJsonPath('data.earnings.available', true)->assertJsonPath('data.earnings.confirmed_cents', (string) app(LogisticsRateService::class)->purchasedShippingSplit($parcel->order)['delivery']);
         $this->assertSame('completed', $parcel->order->fresh()->status);
         $other = $this->createApprovedUser('courier');
         $this->native($other);

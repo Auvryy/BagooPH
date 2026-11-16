@@ -540,6 +540,7 @@ class OrderLifecycleService
         $source = $parcel ? DeliveryCheckpoint::state($parcel->setRelation('order', $order)) : null;
         $custody = $parcel ? DeliveryCheckpoint::lastCustody($parcel) : null;
         $order->update($byBuyer ? ['status' => 'cancelled'] : ['status' => 'cancelled', 'notes' => $reason]);
+        $funding->restoreCancelledUses($order);
         $parcel?->update(['status' => 'cancelled']);
         if ($parcel) {
             app(EtaCalculationService::class)->applyToDelivery($parcel, $order);

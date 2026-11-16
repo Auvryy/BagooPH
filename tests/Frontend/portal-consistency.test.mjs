@@ -11,7 +11,7 @@ import {createInertiaApp} from '@inertiajs/react';
 const root=resolve(import.meta.dirname,'../..');
 const temporary=mkdtempSync(join(import.meta.dirname,'.tmp-portal-consistency-'));
 after(()=>{rmSync(temporary,{recursive:true,force:true});delete globalThis.portalConsistencyHarness;delete globalThis.route;});
-const result=await build({stdin:{contents:`export {default as Sidebar} from '@/Components/AdminSidebarNavigation'; export {default as Dashboard} from '@/Layouts/DashboardLayout'; export {default as Sales} from '@/Pages/Seller/Dashboard'; export {default as Names} from '@/Components/PersonalNameFields';`,resolveDir:root,loader:'tsx'},bundle:true,packages:'external',platform:'node',format:'esm',jsx:'automatic',write:false,loader:{'.css':'empty'},plugins:[{name:'controlled-portal-hooks',setup(b){
+const result=await build({stdin:{contents:`export {default as Sidebar} from '@/Components/AdminSidebarNavigation'; export {adminAreaTabs} from '@/Components/AdminSectionTabs'; export {default as Dashboard} from '@/Layouts/DashboardLayout'; export {default as Sales} from '@/Pages/Seller/Dashboard'; export {default as Names} from '@/Components/PersonalNameFields';`,resolveDir:root,loader:'tsx'},bundle:true,packages:'external',platform:'node',format:'esm',jsx:'automatic',write:false,loader:{'.css':'empty'},plugins:[{name:'controlled-portal-hooks',setup(b){
  b.onResolve({filter:/^react$/},args=>/\/(AdminSidebarNavigation|PersonalNameFields)\.tsx$/.test(args.importer)?{path:'hooks',namespace:'portal-hooks'}:undefined);
  b.onLoad({filter:/.*/,namespace:'portal-hooks'},()=>({contents:`import * as React from 'react'; export * from 'react'; export const useId=()=>globalThis.portalConsistencyHarness?'navigation-section':React.useId(); export const useState=value=>globalThis.portalConsistencyHarness?globalThis.portalConsistencyHarness.state(value):React.useState(value); export const useEffect=(fn,deps)=>{if(globalThis.portalConsistencyHarness)globalThis.portalConsistencyHarness.effects.push(fn);else React.useEffect(fn,deps);};`,resolveDir:root}));
 }}]});
@@ -24,7 +24,7 @@ const seller={id:7,name:'Seller',email:'seller@bagoo.test',role:'seller'};
 async function render(Component,props={},user=seller){let element;const page={component:user.role==='admin'?'Admin/Users':'Seller/Dashboard',props:{auth:{user},flash:{},...props},url:'/dashboard',version:null};const result=await createInertiaApp({page,resolve:()=>Component,setup:({App,props})=>(element=createElement(App,props)),render:()=>renderToStaticMarkup(element)});return result.body;}
 
 test('admin sections retain all destinations and open the active group with keyboard accessible buttons',async()=>{
- const names=['Dashboard','KYC Queue','Shop reviews','Users','Review requests','Products','Voucher campaigns','Advertisements','Logistics','SLA monitoring','Delivery exceptions','Buyer returns','Handover issues','COD cash','Seller proceeds','Return liabilities','Wallet credits','Virtual proceeds','Financial oversight','Governance history','Resource activity'];
+ const names=['Dashboard','KYC Queue','Shop reviews','Users','Review requests','Products','Voucher campaigns','Advertisements','Logistics','SLA monitoring','Delivery exceptions','Buyer returns','Handover issues','Finance','Moderation & penalties','Governance history','Resource activity'];
  const items=names.map((name,index)=>({name,href:'/destination/'+index,icon,current:name==='Users',attention:name==='Products'}));
  const html=await render(ui.Sidebar,{items},{...seller,role:'admin'});
  assert.equal((html.match(/href="\/destination\//g)??[]).length,names.length);
@@ -33,7 +33,10 @@ test('admin sections retain all destinations and open the active group with keyb
  assert.match(html,/aria-current="page"[^>]*[\s\S]*?Users/);
  assert.match(html,/<div[^>]*hidden=""[^>]*role="group" aria-label="Marketplace"/);
  assert.match(html,/h-2 w-2 rounded-full bg-\[#E00D42\]/);
- for(const [label,iconName] of [['Accounts &amp; reviews','users'],['Marketplace','store'],['Deliveries &amp; returns','truck'],['Finance','banknote'],['Governance','shield-check']]){
+ // Finance is one link whose pages are tabs inside the Finance area; Moderation sits under Governance.
+ assert.match(html,/<a[^>]*href="\/destination\/\d+"[^>]*>[\s\S]*?<span>Finance<\/span>/);
+ assert.match(html,/role="group" aria-label="Governance"[\s\S]*?Moderation &amp; penalties/);
+ for(const [label,iconName] of [['Accounts &amp; reviews','users'],['Marketplace','store'],['Deliveries &amp; returns','truck'],['Governance','shield-check']]){
   assert.match(html,new RegExp(`<button[^>]*>[\\s\\S]*?lucide-${iconName}[\\s\\S]*?<span>${label}</span>`));
  }
 });
@@ -119,11 +122,14 @@ test('informational updates and Products never add sidebar dots even in retained
 
 
 test('return finance navigation is available once per authorized owner and hidden from operational floor accounts', async () => {
- for(const role of ['admin','seller','logistics']){
+ for(const role of ['seller','logistics']){
   const owner={...seller,role,status:'suspended',canManageReturnLiabilities:true};
   const html=await render(ui.Dashboard,{title:'Return finances',children:null},owner);
   assert.equal((html.match(/href="\/return-liabilities"/g)??[]).length,1);
  }
+ // Admins reach return liabilities as a tab inside the single Finance area.
+ const admin=await render(ui.Dashboard,{title:'Users',children:null},{...seller,role:'admin',canManageReturnLiabilities:true});
+ assert.equal((admin.match(/href="\/financial-oversight"/g)??[]).length,1);
  const floor=await render(ui.Dashboard,{title:'Hub',children:null},{...seller,role:'logistics',canManageReturnLiabilities:false});
  assert.doesNotMatch(floor,/href="\/return-liabilities"/);
 });
@@ -132,4 +138,17 @@ test('a hub full-access account sees Team in the hub menu and workers do not', a
  assert.match(lead,/href="[^"]*\/team"[^>]*>[\s\S]*?>Team<\/span>/);
  const worker=await render(ui.Dashboard,{title:'Hub',children:null},{...seller,role:'logistics',canManageTeam:false});
  assert.doesNotMatch(worker,/href="[^"]*\/team"/);
+});
+
+test('admin finance and logistics pages share one area with tabs that mark the open page',()=>{
+ const finance=ui.adminAreaTabs('Finance/CodDetail',{returnLiabilities:true,financialReturn:false});
+ assert.equal(finance.label,'Finance');
+ assert.deepEqual(finance.tabs.map(tab=>tab.label),['Overview','COD cash','Seller payouts','Earnings','Wallet credits','Wallet sales','Return liabilities']);
+ assert.deepEqual(finance.tabs.filter(tab=>tab.current).map(tab=>tab.label),['COD cash']);
+ assert.equal(ui.adminAreaTabs('Finance/Overview',{returnLiabilities:false,financialReturn:false}).tabs.some(tab=>tab.label==='Return liabilities'),false);
+ assert.deepEqual(ui.adminAreaTabs('Returns/Liabilities',{returnLiabilities:true,financialReturn:true}).tabs.filter(tab=>tab.current).map(tab=>tab.label),['Return liabilities']);
+ const logistics=ui.adminAreaTabs('Hub/CompanySetup',{returnLiabilities:false,financialReturn:false});
+ assert.equal(logistics.label,'Logistics');
+ assert.deepEqual(logistics.tabs.filter(tab=>tab.current).map(tab=>tab.label),['Companies & hubs']);
+ assert.equal(ui.adminAreaTabs('Admin/Users',{returnLiabilities:true,financialReturn:false}),null);
 });

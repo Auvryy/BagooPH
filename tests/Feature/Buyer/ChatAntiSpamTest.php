@@ -53,7 +53,7 @@ class ChatAntiSpamTest extends TestCase
 
         $this->product = Product::create([
             'shop_id' => $this->shop->id,
-            'category_id' => $this->category->id,
+            'category_id' => $this->shop->root_category_id,
             'name' => 'Insulated Stainless Steel Flask 1000ml',
             'price' => 790.00,
             'stock' => 20,

@@ -6,10 +6,12 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { configureRouteOrigin } from './utils/routeOrigin';
 import { installCatalogueNavigation } from './utils/catalogueRuntime';
+import { installNumericInputGuard } from './utils/numericInputGuard';
 
 declare const Ziggy: { url: string; port: number | null };
 
 configureRouteOrigin(Ziggy, window.location);
+installNumericInputGuard();
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

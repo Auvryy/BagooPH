@@ -18,24 +18,20 @@ class BuyerReceiptClockTest extends TestCase
 {
     use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
-    public function test_elapsed_time_and_history_reads_never_replace_explicit_buyer_receipt_or_cash_reconciliation(): void
+    public function test_elapsed_time_and_history_reads_never_replace_cash_reconciliation(): void
     {
         $this->withoutVite();
         Storage::fake('public');
         Storage::fake('local');
         $parcel = $this->flowDelivery($this->newFlowOrder('ready_for_pickup'), 'delivered');
         $order = $parcel->order->fresh();
+        // The recorded recipient handoff and exact COD complete the order; the buyer has nothing left to confirm.
+        $this->assertSame('completed', $order->status);
+        $this->assertNotNull($order->completed_at);
         $this->travel(8)->days();
-        $this->actingAs($order->buyer)->get('/buyer/orders?order_status=delivered')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->has('orders.data', 1)->where('orders.data.0.status', 'delivered')->where('orders.data.0.can_confirm_receipt', true));
-        $this->assertSame('delivered', $order->fresh()->status);
-        $this->assertNull($order->fresh()->completed_at);
-        $basis = app(SellerSettlementService::class)->eligibility($order->fresh());
-        $this->assertFalse($basis['eligible']);
-        $this->assertContains('The buyer has not confirmed receipt through the documented order flow.', $basis['blockers']);
-        $this->post('/buyer/orders/'.$order->id.'/confirm')->assertSessionHas('success');
-        $this->assertSame('completed', $order->fresh()->status);
-        $this->assertNotNull($order->fresh()->completed_at);
+        $this->actingAs($order->buyer)->get('/buyer/orders?order_status=completed')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('orders.data', 1)->where('orders.data.0.status', 'completed')->where('orders.data.0.can_confirm_receipt', false));
+        // Elapsed time alone never settles the seller: the collected cash is not yet reconciled at the hub.
         $this->assertFalse(app(SellerSettlementService::class)->eligibility($order->fresh())['eligible']);
         $this->assertSame(0, CommissionLedger::count());
         $this->assertSame(0, SellerSettlement::count());

@@ -1,3 +1,4 @@
+import PortalLink from '@/Components/PortalLink';
 import { useState, type FormEvent } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { HubParcelAction, type ParcelGuidance } from '@/Components/HubParcelGuidance';
@@ -53,6 +54,7 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                         <HubEmpty
                             icon={CheckCircle2}
                             title="No failed deliveries in this view"
+                            action={<PortalLink href="/hub" className="mt-3 inline-flex h-9 items-center rounded-control border border-line-300 bg-white px-3 text-[13px] font-semibold text-ink-900 hover:bg-surface-100">Back to hub overview</PortalLink>}
                         />
                     </div>
                 )}

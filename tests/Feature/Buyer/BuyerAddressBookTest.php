@@ -233,6 +233,8 @@ class BuyerAddressBookTest extends TestCase
         $this->get('/buyer/orders/'.$order->id)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('order.recipient_name', 'Original Recipient')->where('order.shipping_address', '84 Original Office Street')
             ->where('order.destination_barangay', 'San Antonio')->where('order.shipping_postal_code', '1600'));
+        // The seller sees the recipient's address once the order is confirmed.
+        $order->update(['status' => 'confirmed']);
         $this->actingAs($shop->user)->get('/seller/orders')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('orders.data.0.recipient_name', 'Original Recipient')->where('orders.data.0.shipping_address', '84 Original Office Street')
             ->where('orders.data.0.destination_barangay', 'San Antonio')->where('orders.data.0.shipping_postal_code', '1600')->where('orders.data.0.can_print_waybill', true));

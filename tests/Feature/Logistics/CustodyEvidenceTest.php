@@ -251,6 +251,13 @@ class CustodyEvidenceTest extends TestCase
     public function test_additive_migration_preserves_legacy_records_without_invented_facts(): void
     {
         $migration = require database_path('migrations/2026_10_07_100000_retain_custody_checkpoint_evidence.php');
+        if (DB::getDriverName() === 'sqlite') {
+            // Rolling this old migration back rebuilds delivery_checkpoints; later triggers on other tables that read it
+            // would break the rebuild, so drop them for this isolated replay.
+            foreach (DB::select("SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name <> 'delivery_checkpoints' AND sql LIKE '%delivery_checkpoints%'") as $trigger) {
+                DB::unprepared('DROP TRIGGER IF EXISTS "'.$trigger->name.'"');
+            }
+        }
         $migration->down();
         $delivery = Delivery::factory()->create();
         $actor = User::factory()->courier()->create();

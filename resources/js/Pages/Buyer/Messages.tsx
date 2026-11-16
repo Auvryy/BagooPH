@@ -197,7 +197,7 @@ export default function BuyerMessages({ conversations }: Props) {
                                                 isSelected ? 'bg-rose-50/60 border-l-4 border-l-[#E00D42]' : 'hover:bg-slate-50'
                                             }`}
                                         >
-                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl font-sans text-xs font-bold ${isSelected ? 'bg-white text-[#E00D42]' : 'bg-slate-900 text-white'}`}>
+                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl font-sans text-xs font-bold ${isSelected ? 'bg-white text-[#E00D42]' : 'bg-surface-100 text-ink-700'}`}>
                                                 {conv.user.shop?.logo_url ? <img src={conv.user.shop.logo_url} alt="" className="h-full w-full object-cover" /> : conv.user.role === 'seller' ? <Store className="h-4 w-4 text-emerald-400" aria-hidden="true" /> : <Truck className="h-4 w-4 text-amber-400" aria-hidden="true" />}
                                             </div>
                                             <div className="flex-1 min-w-0">

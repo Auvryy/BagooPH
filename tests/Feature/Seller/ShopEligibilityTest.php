@@ -132,11 +132,14 @@ class ShopEligibilityTest extends TestCase
         $data = ['weight_kg' => '0.50', 'name' => 'Pet Blanket', 'price' => 150, 'stock' => 10, 'description' => 'A soft pet blanket for everyday comfort.',
             'featured_image' => '/storage/products/blanket.jpg'];
         $this->post('/seller/products', $data + ['category_id' => $shop->root_category_id])->assertRedirect()->assertSessionHasNoErrors();
-        foreach ([$child->id, $grandchild->id, $foreign->id, null] as $categoryId) {
+        foreach ([$grandchild->id, $foreign->id, null] as $categoryId) {
             $this->post('/seller/products', $data + ['category_id' => $categoryId])->assertSessionHasErrors('category_id');
         }
         $this->assertSame($shop->root_category_id, Product::sole()->category_id);
-        $this->assertDatabaseCount('products', 1);
+        // A legacy direct child of the department is filed under the department itself, never under the child.
+        $this->post('/seller/products', $data + ['category_id' => $child->id, 'name' => 'Pet Blanket Large'])->assertSessionHasNoErrors();
+        $this->assertSame([$shop->root_category_id], Product::pluck('category_id')->unique()->values()->all());
+        $this->assertDatabaseCount('products', 2);
     }
 
     public function test_foreign_products_cannot_be_claimed_through_direct_updates(): void

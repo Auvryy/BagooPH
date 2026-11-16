@@ -1040,7 +1040,7 @@ export default function BuyerProductDetail({
                                     className={`px-3.5 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs ${
                                         copiedShareLink
                                             ? 'bg-emerald-600 text-white'
-                                            : 'bg-slate-900 hover:bg-[#E00D42] text-white'
+                                            : 'border border-line-300 bg-white hover:bg-surface-100 text-ink-900'
                                     }`}
                                 >
                                     {copiedShareLink ? (

@@ -195,9 +195,9 @@ export default function BuyerHome({
                             </div>
                             <div>
                                 <div className="flex items-center gap-1.5 text-[10px] text-amber-200 font-bold uppercase tracking-wider">
-                                    <span>● LIVE DISPATCH TELEMETRY</span>
+                                    <span>Your parcel</span>
                                     <span>•</span>
-                                    <span>{activeShipment.status.replace('_', ' ').toUpperCase()}</span>
+                                    <span>{activeShipment.status.replaceAll('_', ' ')}</span>
                                 </div>
                                 <p className="font-bold text-white text-xs mt-0.5">
                                     Order #{activeShipment.order_number} ({activeShipment.item_name}) — Est. Arrival: <strong className="text-white underline">{activeShipment.estimated_delivery}</strong>
@@ -668,7 +668,7 @@ export default function BuyerHome({
                                 onClick={() => setShowFiltersPanel(!showFiltersPanel)}
                                 className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer ${
                                     showFiltersPanel || filters.min_price || filters.max_price || filters.in_stock
-                                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                                        ? 'bg-brand-50 text-brand-700 border-brand-500'
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                                 }`}
                             >
@@ -780,7 +780,7 @@ export default function BuyerHome({
                                         <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                         <h4 className="font-bold text-slate-900 text-xs sm:text-sm uppercase">Recommended Products You Might Like</h4>
                                     </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
                                         {relatedProducts.map((product) => (
                                             <ProductCard
                                                 key={product.id}
@@ -794,7 +794,7 @@ export default function BuyerHome({
                             )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
                             {feedProducts.data.map((product) => (
                                 <ProductCard
                                     key={product.id}
@@ -813,7 +813,7 @@ export default function BuyerHome({
                                 <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                 <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Related Recommendations</h4>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
                                 {relatedProducts.map((p) => (
                                     <ProductCard
                                         key={p.id}

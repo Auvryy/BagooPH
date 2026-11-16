@@ -938,7 +938,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                 onClick={() => setSelectedCategoryTab('all')}
                                 className={`px-4 py-2 rounded-lg font-bold transition uppercase tracking-wider shrink-0 ${
                                     selectedCategoryTab === 'all'
-                                        ? 'bg-black text-white shadow-xs'
+                                        ? 'bg-brand-50 text-brand-700'
                                         : 'bg-white/80 text-black/70 hover:bg-white hover:text-black border border-black/10'
                                 }`}
                             >
@@ -948,7 +948,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                 onClick={() => setSelectedCategoryTab('tactical-bags')}
                                 className={`px-4 py-2 rounded-lg font-bold transition uppercase tracking-wider shrink-0 ${
                                     selectedCategoryTab === 'tactical-bags'
-                                        ? 'bg-black text-white shadow-xs'
+                                        ? 'bg-brand-50 text-brand-700'
                                         : 'bg-white/80 text-black/70 hover:bg-white hover:text-black border border-black/10'
                                 }`}
                             >
@@ -958,7 +958,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                 onClick={() => setSelectedCategoryTab('electronics')}
                                 className={`px-4 py-2 rounded-lg font-bold transition uppercase tracking-wider shrink-0 ${
                                     selectedCategoryTab === 'electronics'
-                                        ? 'bg-black text-white shadow-xs'
+                                        ? 'bg-brand-50 text-brand-700'
                                         : 'bg-white/80 text-black/70 hover:bg-white hover:text-black border border-black/10'
                                 }`}
                             >
@@ -968,7 +968,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                 onClick={() => setSelectedCategoryTab('footwear')}
                                 className={`px-4 py-2 rounded-lg font-bold transition uppercase tracking-wider shrink-0 ${
                                     selectedCategoryTab === 'footwear'
-                                        ? 'bg-black text-white shadow-xs'
+                                        ? 'bg-brand-50 text-brand-700'
                                         : 'bg-white/80 text-black/70 hover:bg-white hover:text-black border border-black/10'
                                 }`}
                             >
@@ -978,7 +978,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                 onClick={() => setSelectedCategoryTab('apparel')}
                                 className={`px-4 py-2 rounded-lg font-bold transition uppercase tracking-wider shrink-0 ${
                                     selectedCategoryTab === 'apparel'
-                                        ? 'bg-black text-white shadow-xs'
+                                        ? 'bg-brand-50 text-brand-700'
                                         : 'bg-white/80 text-black/70 hover:bg-white hover:text-black border border-black/10'
                                 }`}
                             >
@@ -988,7 +988,7 @@ export default function MarketplaceIndex({ categories = [], products, featuredSh
                                 onClick={() => setSelectedCategoryTab('accessories')}
                                 className={`px-4 py-2 rounded-lg font-bold transition uppercase tracking-wider shrink-0 ${
                                     selectedCategoryTab === 'accessories'
-                                        ? 'bg-black text-white shadow-xs'
+                                        ? 'bg-brand-50 text-brand-700'
                                         : 'bg-white/80 text-black/70 hover:bg-white hover:text-black border border-black/10'
                                 }`}
                             >

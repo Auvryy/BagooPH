@@ -98,6 +98,19 @@ class RiderParcelApiTest extends TestCase
         $this->assertSame('arrived_at_origin_hub', $parcel->fresh()->status);
     }
 
+    public function test_direct_handover_to_the_buyer_may_leave_the_name_empty_but_a_representative_must_be_named(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $parcel = $this->flowDelivery($this->newFlowOrder(), 'out_for_delivery');
+        $this->native(User::findOrFail($parcel->assigned_rider_id));
+        $body = ['recipient_name' => '', 'cash_received' => (string) $parcel->order->total_amount, 'change_given' => '0.00',
+            'cash_confirmed' => true, 'proof_image_file' => UploadedFile::fake()->image('handoff.jpg')];
+        $this->action($parcel, 'final_mile', 'deliver', [...$body, 'recipient_relationship' => 'authorized_recipient'])->assertUnprocessable();
+        $this->action($parcel, 'final_mile', 'deliver', [...$body, 'recipient_relationship' => 'buyer'])->assertOk()
+            ->assertJsonPath('data.result.operational_stage', 'delivered');
+    }
+
     public function test_native_departure_and_private_delivery_record_real_cash_without_buyer_completion(): void
     {
         Storage::fake('local');

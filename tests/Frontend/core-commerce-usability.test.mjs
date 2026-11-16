@@ -32,6 +32,13 @@ const result = await build({
             export const Head = () => null;
             export const Link = () => null;
         ` }));
+        // Checkout places the order with a direct JSON request; record it and let the test settle it.
+        builder.onResolve({ filter: /^axios$/ }, () => ({ path: 'axios', namespace: 'page-axios' }));
+        builder.onLoad({ filter: /.*/, namespace: 'page-axios' }, () => ({ loader: 'js', contents: `
+            const post = (url, data, options) => new Promise((resolve, reject) => globalThis.coreCommerceHarness.requests.push({ url, data: structuredClone(data), options, resolve, reject }));
+            export const isAxiosError = () => false;
+            export default { post, isAxiosError };
+        ` }));
         builder.onResolve({ filter: /Layouts\/(BuyerLayout|BuyerOrderAccessLayout|DashboardLayout)$/ }, () => ({ path: 'layout', namespace: 'page-layout' }));
         builder.onLoad({ filter: /.*/, namespace: 'page-layout' }, () => ({ loader: 'js', contents: `export default function BuyerLayout() {}` }));
         builder.onResolve({ filter: /hooks\/usePurchaseQuote$/ }, () => ({ path: 'quote', namespace: 'page-quote' }));
@@ -197,24 +204,22 @@ test('checkout saved address dropdown stays visible and caret toggles expand or 
     assert.ok(field(tree, 'checkout-address-editor'), 'selecting new opens the address editor with dropdowns');
 });
 
-test('final order confirmation accepts one pending write, retains safe details and permits retry only after completion', () => {
+test('final order confirmation accepts one pending write, retains safe details and permits retry only after completion', async () => {
     const h = harness(); let tree = h.render();
+    const placeOrder = current => all(current, node => (node.type === 'button' || node.type?.name === 'Button') && text(node).trim() === 'Place order')[0];
     all(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} }); tree = h.render();
-    const agreement = all(tree, node => node.type === 'input' && node.props.type === 'checkbox').at(-1);
-    agreement.props.onChange({ target: { checked: true } }); tree = h.render();
-    const confirm = all(tree, node => node.type === 'button' && text(node) === 'Confirm & Place Order')[0];
+    all(tree, node => node.type === 'input' && node.props.type === 'checkbox').at(-1).props.onChange({ target: { checked: true } }); tree = h.render();
+    const confirm = placeOrder(tree);
     confirm.props.onClick(); confirm.props.onClick();
-    assert.equal(h.requests.length, 1); assert.equal(h.requests[0].data.checkout_token, 'isolated-checkout');
-    assert.equal(h.requests[0].options.preserveScroll, true);
-    h.requests[0].options.onFinish(); tree = h.render();
-    assert.equal(all(tree, node => typeof node.props?.open === 'boolean')[0].props.open, false);
+    assert.equal(h.requests.length, 1, 'a double tap sends one order');
+    assert.equal(h.requests[0].data.checkout_token, 'isolated-checkout');
+    // The server refuses: checkout returns to review, keeps the address and allows a retry.
+    h.requests[0].reject({ response: { data: { message: 'Stock changed. Review your bag.' } } });
+    await new Promise(resolve => setTimeout(resolve, 0)); tree = h.render();
     assert.equal(h.data.shipping_address, address.street);
     assert.equal(h.data.shipping_postal_code, '4009');
-    all(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} }); tree = h.render();
-    assert.equal(all(tree, node => node.type === 'input' && node.props.type === 'checkbox').at(-1).props.checked, false);
-    all(tree, node => node.type === 'input' && node.props.type === 'checkbox').at(-1).props.onChange({ target: { checked: true } }); tree = h.render();
-    all(tree, node => node.type === 'button' && text(node) === 'Confirm & Place Order')[0].props.onClick();
-    assert.equal(h.requests.length, 2);
+    placeOrder(tree).props.onClick();
+    assert.equal(h.requests.length, 2, 'a refused order can be retried');
 });
 
 test('checkout fields expose server-matching limits and map-friendly rejection text', () => {
@@ -263,7 +268,7 @@ test('checkout requires a delivery pin and submits map-selected precision', () =
     tree = mapped.render();
     all(tree, node => node.type === 'input' && node.props.type === 'checkbox').at(-1).props.onChange({ target: { checked: true } });
     tree = mapped.render();
-    all(tree, node => node.type === 'button' && text(node) === 'Confirm & Place Order')[0].props.onClick();
+    all(tree, node => (node.type === 'button' || node.type?.name === 'Button') && text(node).trim() === 'Place order')[0].props.onClick();
     assert.equal(mapped.requests.length, 1);
     assert.deepEqual([mapped.requests[0].data.shipping_latitude, mapped.requests[0].data.shipping_longitude], [14.5501234, 121.0509876]);
 });

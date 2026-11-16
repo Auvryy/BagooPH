@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\Courier\RiderShiftService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\CodMoney;
+use App\Services\Logistics\LogisticsRateService;
 use App\Services\Logistics\OrderStateMachineService;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
 use Database\Seeders\DatabaseSeeder;
@@ -69,7 +70,7 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
         $pickupRider = User::where('email', 'pickup.rider@bagoo.test')->firstOrFail();
         $finalRider = User::where('email', 'rider@bagoo.test')->firstOrFail();
         $originHandler = User::where('email', 'losbanos.hub@bagoo.test')->firstOrFail();
-        $motherHandler = User::where('email', 'motherhub@bagoo.test')->firstOrFail();
+        $motherHandler = User::where('email', 'motherhub.floor@bagoo.test')->firstOrFail();
         $destinationHandler = User::where('email', 'logistics@bagoo.test')->firstOrFail();
         $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
         $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
@@ -98,7 +99,9 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             'item_ids' => [$item->id],
             'payment_method' => 'cod',
         ];
-        $this->actingAs($buyer)->post(route('checkout.store'), $checkoutPayload)->assertRedirect(route('buyer.orders.index'));
+        // Sent like the buyer app (background request without asking for JSON): it must get the page redirect, not JSON.
+        $this->actingAs($buyer)->withHeaders(['X-Requested-With' => 'XMLHttpRequest', 'Accept' => '*/*'])->post(route('checkout.store'), $checkoutPayload)->assertRedirect(route('buyer.orders.index'));
+        $this->flushHeaders();
 
         $order = Order::with('delivery')->firstOrFail();
         $delivery = $order->delivery;
@@ -140,7 +143,7 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
         $this->assertSame($checkpointCount, DeliveryCheckpoint::where('delivery_id', $delivery->id)
             ->where('checkpoint_type', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)
             ->count());
-        $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $delivery->id, 'role' => 'pickup', 'user_id' => $pickupRider->id, 'amount_cents' => 1000]);
+        $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $delivery->id, 'role' => 'pickup', 'user_id' => $pickupRider->id, 'amount_cents' => app(LogisticsRateService::class)->purchasedShippingSplit($delivery->order)['pickup']]); // The order's saved shipping split.
         $this->assertNotNull(LogisticsEarning::where('delivery_id', $delivery->id)->where('role', 'pickup')->sole()->released_at);
 
         if ($legacy) {
@@ -205,8 +208,11 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
         $this->assertSame(0, CommissionLedger::where('order_id', $order->id)->count());
         $earnings = LogisticsEarning::where('delivery_id', $delivery->id)->get()->keyBy('role');
         $this->assertSame(5, $earnings->count());
-        $this->assertSame(2500, $earnings['company']->amount_cents);
-        $this->assertSame(2500, $earnings['delivery']->amount_cents);
+        // Shipping shares follow the order's saved split, and the three shares add up to the shipping fee paid.
+        $split = app(LogisticsRateService::class)->purchasedShippingSplit($order->fresh());
+        $this->assertSame($split['company'], $earnings['company']->amount_cents);
+        $this->assertSame($split['delivery'], $earnings['delivery']->amount_cents);
+        $this->assertSame(CodMoney::cents($order->fresh()->shipping_fee), $earnings['company']->amount_cents + $earnings['delivery']->amount_cents + $earnings['pickup']->amount_cents);
         $this->assertSame(CodMoney::cents($order->subtotal), $earnings['seller']->amount_cents + $earnings['platform']->amount_cents);
         $this->assertSame((int) floor(CodMoney::cents($order->subtotal) * .9), $earnings['seller']->amount_cents);
         $this->assertNotNull($earnings['seller']->released_at);
@@ -288,9 +294,12 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
     ): void {
         if (in_array($action, ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB'], true)) {
             $this->assertSame($expectedStatus, $delivery->fresh()->status);
-            $this->actingAs($operator)->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number,
-                'hub_id' => $hub->id, 'mode' => 'inspect'])->assertOk()->assertJsonPath('prompt.requires_confirmation', false)
-                ->assertJsonPath('prompt.manifest_url', '/hub/manifests?hub_id='.$hub->id);
+            $inspect = $this->actingAs($operator)->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number,
+                'hub_id' => $hub->id, 'mode' => 'inspect'])->assertOk();
+            // Dispatch still happens on a manifest; arrivals can be received with one scan on the phone.
+            if (str_starts_with($action, 'DISPATCH')) {
+                $inspect->assertJsonPath('prompt.requires_confirmation', false)->assertJsonPath('prompt.manifest_url', '/hub/manifests?hub_id='.$hub->id);
+            }
             $this->recordSeededManifest($delivery, $hub, str_starts_with($action, 'DISPATCH'), $operator);
 
             return;

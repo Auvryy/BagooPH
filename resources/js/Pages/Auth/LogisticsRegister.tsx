@@ -635,7 +635,7 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
                                     onClick={() => toggleVehicleType('motorcycle')}
                                     className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2.5 cursor-pointer ${
                                         data.vehicle_types.includes('motorcycle')
-                                            ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
+                                            ? 'bg-brand-50 border-brand-500 text-brand-700'
                                             : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
                                     }`}
                                 >
@@ -655,7 +655,7 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
                                     onClick={() => toggleVehicleType('l300_van')}
                                     className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2.5 cursor-pointer ${
                                         data.vehicle_types.includes('l300_van')
-                                            ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
+                                            ? 'bg-brand-50 border-brand-500 text-brand-700'
                                             : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
                                     }`}
                                 >
@@ -675,7 +675,7 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
                                     onClick={() => toggleVehicleType('wing_truck')}
                                     className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2.5 cursor-pointer ${
                                         data.vehicle_types.includes('wing_truck')
-                                            ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
+                                            ? 'bg-brand-50 border-brand-500 text-brand-700'
                                             : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
                                     }`}
                                 >

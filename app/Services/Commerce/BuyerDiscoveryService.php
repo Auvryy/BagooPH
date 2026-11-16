@@ -177,6 +177,8 @@ class BuyerDiscoveryService
             $page = (clone $products)->paginate($perPage, ['*'], 'page', $page->lastPage());
         }
 
+        app(\App\Services\Vouchers\ProductVoucherHints::class)->attach($page->getCollection());
+
         return $page->withPath(request()->getPathInfo())
             ->appends(array_filter($filters, fn ($value) => $value !== '' && $value !== 'all' && $value !== false));
     }

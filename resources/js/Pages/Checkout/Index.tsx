@@ -278,7 +278,7 @@ export default function CheckoutIndex({
         : missingLocation ? 'Delivery province and city are required before matching a logistics company.'
             : missingValidPostal ? 'A valid 4-digit postal code is required for your delivery address to match a logistics hub. Add or edit the postal code in Delivery Address.'
                 : pricing.failure ? pricing.failure
-                    : noServingCompany ? `No available logistics company near ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code})${quote.shops.length > 1 ? ' serves all sellers in your bag' : ' serves this route'}.`
+                    : noServingCompany ? 'Delivery unavailable for this address.'
                         : noSelfPickupHubsForCompany ? `No Bayan Hub self-pickup counter is available near ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code}) for ${selectedCompany?.name}. Choose Doorstep Delivery or another address.`
                             : '';
     const hasInvalidDeliveryLocation = Boolean(errors.shipping_latitude || errors.shipping_longitude);
@@ -287,7 +287,8 @@ export default function CheckoutIndex({
         && (data.delivery_type === 'doorstep' || Boolean(data.pickup_hub_id));
     const canShowQuote = pricing.ready && routeDetailsReady && Boolean(selectedCompany);
     const quoteStatus = pricing.pending ? 'Updating prices, delivery fees and voucher eligibility…'
-        : logisticsUnavailableReason ? logisticsUnavailableReason
+        // The delivery section already explains why; the summary only says what to do next.
+        : logisticsUnavailableReason ? 'Choose another delivery address to continue.'
             : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a Bayan Hub to check collection coverage.'
                 : !selectedCompany ? 'Choose an eligible logistics company to confirm your delivery total.'
                     : 'Current prices and delivery fees checked.';
@@ -341,8 +342,16 @@ export default function CheckoutIndex({
         }
     }, [pricing.current, pricing.validSelection, quote.voucher_error]);
 
-    const useBestVouchers = async () => {
+    // Best vouchers apply on their own once per basket; a buyer's own voucher choice is never overridden.
+    const buyerChoseVouchers = useRef(false);
+    const autoAppliedFor = useRef('');
+    const [autoApplied, setAutoApplied] = useState(false);
+    const { code: _code, platform_voucher_revision_id: _platform, shop_voucher_revision_ids: _shops, ...basketInput } = quoteInput;
+    const basketKey = JSON.stringify(basketInput);
+
+    const useBestVouchers = async (automatic = false) => {
         if (bestPending.current || !pricing.ready) return;
+        if (!automatic) setAutoApplied(false);
         bestPending.current = true; setBestBusy(true); setVoucherError('');
         const requested = currentQuoteKey.current;
         const controller = new AbortController(); bestController.current = controller;
@@ -351,15 +360,25 @@ export default function CheckoutIndex({
             const response = await axios.post(route('buyer.vouchers.best'), body, { signal: controller.signal });
             if (isVoucherRequestCurrent(requested, currentQuoteKey.current, controller.signal.aborted)) {
                 setData(prev => ({ ...prev, ...repairedVoucherSelection(prev, response.data.selection) }));
-            } else if (!controller.signal.aborted) setVoucherError('Your checkout changed. Compare vouchers again for the updated items and delivery.');
+                if (automatic) setAutoApplied(Boolean(response.data.selection?.platform_voucher_revision_id || Object.values(response.data.selection?.shop_voucher_revision_ids ?? {}).some(Boolean)));
+            } else if (!automatic && !controller.signal.aborted) setVoucherError('Your checkout changed. Compare vouchers again for the updated items and delivery.');
         } catch (failure) {
-            if (!controller.signal.aborted && requested === currentQuoteKey.current) setVoucherError(axios.isAxiosError(failure) && failure.response?.status === 422
+            if (!automatic && !controller.signal.aborted && requested === currentQuoteKey.current) setVoucherError(axios.isAxiosError(failure) && failure.response?.status === 422
                 ? failure.response.data.message : 'Could not compare vouchers. Try again.');
         } finally { bestPending.current = false; if (!controller.signal.aborted) setBestBusy(false); }
     };
 
+    useEffect(() => {
+        if (!pricing.ready || pricing.pending || bestPending.current || buyerChoseVouchers.current || autoAppliedFor.current === basketKey) return;
+        autoAppliedFor.current = basketKey;
+        const chosen = data.voucher_code || data.platform_voucher_revision_id || Object.values(data.shop_voucher_revision_ids ?? {}).some(Boolean);
+        if (!chosen) void useBestVouchers(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pricing.ready, pricing.pending, basketKey]);
+
     const selectOffer = (offer: VoucherOffer) => {
         if (!offer.revision_id) return;
+        buyerChoseVouchers.current = true; setAutoApplied(false);
         setVoucherError('');
         setData(prev => ({ ...prev, ...chooseVoucher(prev, offer, appliedVouchers) }));
     };
@@ -378,6 +397,7 @@ export default function CheckoutIndex({
     };
 
     const removeVoucher = (shopId: number | null) => {
+        buyerChoseVouchers.current = true; setAutoApplied(false);
         setVoucherError('');
         setVoucherCodeInput('');
         setData(prev => ({ ...prev, ...withoutVoucher(prev, shopId, appliedVouchers) }));
@@ -717,6 +737,7 @@ export default function CheckoutIndex({
                                                 )}
 
                                                 <LocationPinPicker
+                                                    compact
                                                     value={data.shipping_latitude !== '' && data.shipping_longitude !== '' && Number.isFinite(Number(data.shipping_latitude)) && Number.isFinite(Number(data.shipping_longitude))
                                                         ? { latitude: Number(data.shipping_latitude), longitude: Number(data.shipping_longitude) } : null}
                                                     onChange={point => { gps.cancel(); setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })); }}
@@ -979,7 +1000,8 @@ export default function CheckoutIndex({
                                         {platformVoucher ? 'Change' : 'Add'}
                                     </button>
                                 </div>
-                                <Button size="sm" variant="ghost" className="-ml-3" onClick={useBestVouchers} disabled={!pricing.ready || bestBusy}>
+                                {autoApplied && !bestBusy && <p role="status" className="text-[13px] text-success">Your best vouchers were applied automatically.</p>}
+                                <Button size="sm" variant="ghost" className="-ml-3" onClick={() => void useBestVouchers()} disabled={!pricing.ready || bestBusy}>
                                     {bestBusy ? 'Comparing vouchers…' : 'Use best vouchers'}
                                 </Button>
                                 {voucherError && <p role="alert" className="text-[13px] text-brand-700">{voucherError}</p>}
@@ -1122,6 +1144,7 @@ export default function CheckoutIndex({
                                             />
                                             <span>I have checked my delivery details and total.</span>
                                         </label>
+                                        <p className="mt-2 text-xs text-ink-600">By placing this order you agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold underline">Terms of Use</a>, including the return and refund rules.</p>
                                     </div>
 
                                     <div className="flex flex-col-reverse gap-3 border-t border-line-200 px-6 py-4 sm:flex-row sm:justify-end">

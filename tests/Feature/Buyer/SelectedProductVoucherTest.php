@@ -153,7 +153,9 @@ class SelectedProductVoucherTest extends TestCase
         }
         $this->assertSame(0, $revision->balance->fresh()->committed_cents);
         $this->assertSame(2000, $revision->balance->fresh()->released_cents);
-        $this->assertSame(1, $revision->balance->fresh()->redemption_count);
+        // The cancelled order no longer counts against the voucher's limits; a repeat cancel does not restore twice.
+        $this->assertSame(0, $revision->balance->fresh()->redemption_count);
+        $this->assertDatabaseCount('wallet_voucher_restorations', 1);
         $this->assertSame(10, $this->qualifying->fresh()->stock);
         $this->assertSame(10, $this->other->fresh()->stock);
         $this->assertSame($original['total_amount'], $order->fresh()->getRawOriginal('total_amount'));
@@ -249,7 +251,7 @@ class SelectedProductVoucherTest extends TestCase
     }
 
     #[DataProvider('walletEndings')]
-    public function test_wallet_cancellation_or_expiry_keeps_original_selected_amounts_and_restores_only_the_documented_use(string $ending): void
+    public function test_wallet_cancellation_or_expiry_keeps_original_selected_amounts_and_restores_the_use_once(string $ending): void
     {
         $revision = $this->offer();
         $this->items(2);
@@ -270,7 +272,8 @@ class SelectedProductVoucherTest extends TestCase
             $this->assertSame('refunded', $order->fresh()->payment_status);
             $this->assertSame(100000, WalletAccount::where('user_id', $this->buyer->id)->sole()->balance_cents);
             $this->assertSame(1, WalletTransaction::where('kind', 'wallet_cancellation_refund')->count());
-            $this->assertSame(1, $revision->balance->fresh()->redemption_count);
+            $this->assertSame(0, $revision->balance->fresh()->redemption_count);
+            $this->assertDatabaseCount('wallet_voucher_restorations', 1);
         } else {
             $this->travel(61)->minutes();
             $this->assertSame(1, $payments->expireDue());

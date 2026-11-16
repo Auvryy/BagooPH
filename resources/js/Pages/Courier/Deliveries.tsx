@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import useOperationalRefresh from '@/hooks/useOperationalRefresh';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowRight, Banknote, Camera, Compass, MapPin, Navigation, RefreshCw, Search, Truck } from 'lucide-react';
+import { ArrowRight, Banknote, Camera, ChevronDown, MapPin, Navigation, RefreshCw, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import CourierJobMap from '@/Components/CourierJobMap';
 import CourierCurrentJob from '@/Components/CourierCurrentJob';
@@ -83,6 +83,9 @@ type WorkspaceView = 'assigned' | 'available';
 type WorkspaceEntry = { phase: 'pickup'; task: PickupTask } | { phase: 'available'; task: PickupTask } | { phase: 'final_mile'; task: FinalMileTask };
 type ActionTarget = { id: number; trackingNumber: string; status: 'picked_up' | 'out_for_delivery' | 'delivered' | 'delivery_failed' };
 const actionLabels = { picked_up: 'Confirm pickup', out_for_delivery: 'Start delivery', delivered: 'Record delivery', delivery_failed: 'Record failed attempt' };
+
+// Cash fields accept only money: digits with up to two decimals (no letters, signs or a third decimal).
+const moneyDraft = (value: string): string | null => (value === '' || /^\d{0,7}(\.\d{0,2})?$/.test(value.trim()) ? value.trim() : null);
 
 export default function CourierDeliveries({ scope, isOnline = false, stats, queues, recoveryRequestToken, cashSummary }: Props) {
     const { auth } = usePage<PageProps>().props;
@@ -387,41 +390,20 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         <CourierLayout title={courierGreeting(auth.user?.name)} pageLabel="Tasks" subtitle={scope?.isAssigned ? 'See what is assigned to you, what you are carrying, and what you can claim.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
             <Head title="Rider dashboard — BagooPH" />
             <div className="space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-800">
-                            <Compass className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <h2 className="text-sm font-bold text-slate-900">Live Road Navigation & Dynamic Route</h2>
-                            <p className="text-xs text-slate-600">Tracks your GPS with AH26 national highway prioritization and fullscreen bike mount view.</p>
-                        </div>
-                    </div>
-                    <Link
-                        href={courierPath('/navigation')}
-                        className="inline-flex items-center gap-2 rounded bg-[#E00D42] border border-[#C20836] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#C20836] shadow-sm transition-colors"
-                    >
-                        <Navigation className="h-4 w-4 text-zinc-300" />
-                        <span>Launch Fullscreen Map</span>
-                    </Link>
-                </div>
-
-                <details className="rounded border border-slate-300 bg-white p-4" open={sampleMapOpen} onToggle={(event) => setSampleMapOpen(event.currentTarget.open)}>
-                    <summary className="cursor-pointer py-2 text-sm font-semibold flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                            <Compass className="h-4 w-4 text-slate-600" />
+                {/* One map section: the next stop's map and a single way into the full-screen navigation. */}
+                <section className="rounded-xl border border-slate-200 bg-white p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <button type="button" aria-expanded={sampleMapOpen} onClick={() => setSampleMapOpen(open => !open)} className="flex min-h-11 items-center gap-2 text-left text-sm font-semibold text-slate-900">
+                            <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${sampleMapOpen ? '' : '-rotate-90'}`} aria-hidden="true" />
                             <span>Route Map Preview (Next Stop)</span>
-                        </span>
-                        <span className="text-xs font-normal text-slate-500">
-                            {selectedMapJob ? selectedMapJob.stopLabel : mapJobs[0] ? mapJobs[0].stopLabel : 'Active assignment'}
-                        </span>
-                    </summary>
-                    {sampleMapOpen && (
-                        <div className="pt-3">
-                            <CourierJobMap job={selectedMapJob || mapJobs[0]} />
-                        </div>
-                    )}
-                </details>
+                            <span className="text-xs font-normal text-slate-500">{selectedMapJob ? selectedMapJob.stopLabel : mapJobs[0] ? mapJobs[0].stopLabel : 'No active stop'}</span>
+                        </button>
+                        <Link href={courierPath('/navigation')} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#E00D42] px-4 text-sm font-semibold text-white hover:bg-[#C20836]">
+                            <Navigation className="h-4 w-4" aria-hidden="true" />Open full map
+                        </Link>
+                    </div>
+                    {sampleMapOpen && <div className="pt-3"><CourierJobMap job={selectedMapJob || mapJobs[0]} embedded /></div>}
+                </section>
                 <div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={loadingId !== null} onClick={() => {
                     if (pending.current) return;
                     pending.current = true; setLoadingId(-1); setErrors({});
@@ -670,7 +652,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                             )}
                         </div>
 
-                        {!walletHandover && <><div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold" htmlFor="cash-tender">Cash received (PHP)<input id="cash-tender" type="text" inputMode="decimal" required value={cashReceived} disabled={loadingId !== null} onChange={(event) => setCashReceived(event.target.value)} placeholder="0.00" className={courierInput} /><CourierFieldError message={errors.cash_received} /></label><label className="block text-sm font-semibold" htmlFor="cash-change">Change given (PHP)<input id="cash-change" type="text" inputMode="decimal" required value={changeGiven} disabled={loadingId !== null} onChange={(event) => setChangeGiven(event.target.value)} className={courierInput} /><CourierFieldError message={errors.change_given} /></label></div>
+                        {!walletHandover && <><div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold" htmlFor="cash-tender">Cash received (PHP)<input id="cash-tender" type="text" inputMode="decimal" required value={cashReceived} disabled={loadingId !== null} onChange={(event) => { const value = moneyDraft(event.target.value); if (value === null) return; setCashReceived(value); const tender = cashInputCents(value); if (tender !== null && actionDue !== null) setChangeGiven(tender >= actionDue ? ((tender - actionDue) / 100).toFixed(2) : '0.00'); }} placeholder="0.00" className={courierInput} /><CourierFieldError message={errors.cash_received} /></label><label className="block text-sm font-semibold" htmlFor="cash-change">Change given (PHP)<input id="cash-change" type="text" inputMode="decimal" required value={changeGiven} disabled={loadingId !== null} onChange={(event) => { const value = moneyDraft(event.target.value); if (value !== null) setChangeGiven(value); }} className={courierInput} /><span className="mt-1 block text-xs font-normal text-slate-500">Worked out from the cash received. Edit only if you gave different change.</span><CourierFieldError message={errors.change_given} /></label></div>
                         <p role="status" className="text-sm text-slate-600">{netCash === null || netCash < 0 ? 'Enter the cash counted and any change actually given.' : `Cash kept for this order: ${courierMoney(netCash / 100)}.${netCash === actionDue ? ' This matches the amount due.' : ' This must match the saved amount due.'}`}</p>
                         <label className="flex items-start gap-3 text-sm leading-relaxed"><input type="checkbox" checked={cashConfirmed} disabled={loadingId !== null} onChange={(event) => setCashConfirmed(event.target.checked)} className="mt-1 rounded border-slate-300 text-slate-900 focus:ring-slate-900" /><span>I counted the cash and gave the stated change. I will hand over the recorded amount separately.</span></label></>}
                         {walletHandover && <p className="text-sm leading-relaxed text-slate-600">The buyer paid with virtual wallet credits. Record the actual recipient and delivery proof; do not collect cash.</p>}<CourierFieldError message={errors.cash_confirmed || errors.request_token} />

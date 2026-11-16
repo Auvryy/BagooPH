@@ -3,6 +3,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { Building2, CircleDollarSign, KeyRound, MapPin, Plus, Settings2, Users, Warehouse } from 'lucide-react';
 import { CoverageEditor, TemporaryLoginEditor } from '@/Components/Logistics/SetupEditors';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import PortalLink from '@/Components/PortalLink';
 import HubMap from '@/Components/Logistics/HubMap';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import HubLocationEditor from '@/Components/Logistics/HubLocationEditor';
@@ -11,7 +12,7 @@ import LocationPinPicker from '@/Components/LocationPinPicker';
 import { HubBadge, HubButton, HubCategoryTabs, HubPanel, HubPageHeader, HubSearch, InfoHint, hubInput } from '@/Components/Logistics/Workspace';
 
 type Hub = { latitude: number | null; longitude: number | null; address: string; id: number; name: string; code: string; tier: string; city_municipality: string; province: string; parent_hub_id: number | null; postal_codes: string[] | null; coverage_token: string; location_token: string; is_active: boolean };
-type Props = { companies: { id: number; name: string }[]; company: { id: number; name: string; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number; shipping_earnings_model: string; tariff_version: number }; canProvision: boolean; hubs: Hub[]; staff: { id: number; name: string; email: string; kind: string; hub_name: string; handler_id?: number | null; job_role?: string | null; must_change_password: boolean; email_verified_at: string | null }[]; basePath: string };
+type Props = { companies: { id: number; name: string }[]; company: { id: number; name: string; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number; shipping_earnings_model: string; tariff_version: number }; canProvision: boolean; hubs: Hub[]; staff: { id: number; name: string; email: string; kind: string; hub_name: string; handler_id?: number | null; job_role?: string | null; must_change_password: boolean; email_verified_at: string | null }[]; basePath: string; counts?: { operators: number; riders: number }; isAdmin?: boolean };
 const JOB_ROLE_OPTIONS = [
     { value: 'all', label: 'Full Hub Operations (All)' },
     { value: 'intake', label: 'Entry / Intake only' },
@@ -38,7 +39,7 @@ export function ShippingEarningsPreview({ baseFee, model }: { baseFee: string; m
         : `${peso(baseCents)} base fee: ${peso(baseCents - pickup - delivery)} company, ${peso(delivery)} delivery rider${pickup > 0 ? ` and ${peso(pickup)} pickup rider` : ''}.`}</p>;
 }
 
-export default function CompanySetup({ company, companies, canProvision, hubs, staff, basePath }: Props) {
+export default function CompanySetup({ company, companies, canProvision, hubs, staff, basePath, counts, isAdmin = false }: Props) {
     const [tab, setTab] = useState('network');
     const [search, setSearch] = useState('');
     const [selectedHubId, setSelectedHubId] = useState<number | null>(null);
@@ -60,6 +61,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
         <DashboardLayout title="Company setup">
             <Head title="Company setup" />
             <div className="space-y-6">
+                {isAdmin && <PortalLink href={basePath} className="inline-flex items-center gap-1 text-[13px] font-medium text-ink-700 underline underline-offset-2 hover:text-ink-900">All logistics companies</PortalLink>}
                 <HubPageHeader
                     title="Company setup"
                     icon={Building2}
@@ -74,8 +76,9 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                 <div className="grid grid-cols-2 divide-x divide-y divide-line-200 overflow-hidden rounded-card border border-line-200 bg-white lg:grid-cols-4 lg:divide-y-0">
                     {[
                         { label: 'Hubs', value: hubs.length, note: `${activeHubCount} active` },
-                        { label: 'Work accounts', value: staff.length, note: `${staff.length - riderCount} operators` },
-                        { label: 'Riders', value: riderCount, note: null },
+                        // Real hub workers and riders of this company, including ones not invited from this page.
+                        { label: 'Hub workers', value: counts?.operators ?? staff.length - riderCount, note: null },
+                        { label: 'Riders', value: counts?.riders ?? riderCount, note: null },
                         { label: 'Base shipping', value: `₱${tariff.data.base_fee}`, note: `v${company.tariff_version}` },
                     ].map(({ label, value, note }) => (
                         <div key={label} className="p-4 sm:p-5">
@@ -270,7 +273,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                         />
                                     </Field>
                                     <Field label="Parcel capacity" error={facility.errors.capacity}>
-                                        <input required type="number" min={1} max={1000000} value={facility.data.capacity} onChange={event => facility.setData('capacity', Number(event.target.value))} className={hubInput} />
+                                        <input required type="number" inputMode="numeric" step={1} min={1} max={1000000} value={facility.data.capacity} onChange={event => facility.setData('capacity', Number(event.target.value))} className={hubInput} />
                                     </Field>
                                     <Field label="Actual collection hours" error={facility.errors.operating_hours}>
                                         <input value={facility.data.operating_hours} onChange={event => facility.setData('operating_hours', event.target.value)} className={hubInput} placeholder="Monday to Saturday, 8 AM to 5 PM" />
@@ -444,7 +447,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                         <input required inputMode="decimal" value={tariff.data.base_fee} onChange={event => tariff.setData('base_fee', event.target.value)} className={hubInput} />
                                     </Field>
                                     <Field label="Included weight (grams)" error={tariff.errors.included_weight_grams}>
-                                        <input required type="number" min={1} value={tariff.data.included_weight_grams} onChange={event => tariff.setData('included_weight_grams', Number(event.target.value))} className={hubInput} />
+                                        <input required type="number" inputMode="numeric" step={1} min={1} value={tariff.data.included_weight_grams} onChange={event => tariff.setData('included_weight_grams', Number(event.target.value))} className={hubInput} />
                                     </Field>
                                     <Field label="Each additional started kg (PHP)" error={tariff.errors.additional_kg_fee}>
                                         <input required inputMode="decimal" value={tariff.data.additional_kg_fee} onChange={event => tariff.setData('additional_kg_fee', event.target.value)} className={hubInput} />

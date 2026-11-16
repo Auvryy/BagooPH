@@ -107,6 +107,8 @@ class DatabaseSeeder extends Seeder
         $this->call(LogisticsTestingEnvironmentSeeder::class);
         // Vouchers need the demo seller shop to be approved first (SellerDemoSeeder).
         $this->call(VoucherDemoSeeder::class);
+        $this->call(SaleEventDemoSeeder::class);
+        $this->call(PromotionDemoSeeder::class);
         $this->call(HubWorkerRolesSeeder::class);
     }
 }

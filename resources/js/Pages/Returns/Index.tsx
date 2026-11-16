@@ -48,6 +48,8 @@ export default function ReturnsIndex({ cases }: { cases: PaginatedData<Summary> 
                         <p className="mt-2 max-w-md text-sm leading-6 text-zinc-500">
                             {buyer ? 'If a delivered item has a problem, open its purchase and choose Request a return.' : 'Requests linked to your account will appear here for review.'}
                         </p>
+                        {/* Always a way onward from an empty list. */}
+                        <Link href={({ buyer: '/buyer/orders', seller: '/seller/orders', admin: '/admin/dashboard', logistics: '/hub', courier: '/courier/deliveries' } as Record<string, string>)[auth.user?.role ?? ''] ?? '/'} className="mt-3 inline-flex h-9 items-center rounded-control border border-line-300 bg-white px-3 text-[13px] font-semibold text-ink-900 hover:bg-surface-100">{buyer ? 'View my orders' : auth.user?.role === 'seller' ? 'Open orders' : 'Back to overview'}</Link>
                     </section>
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">

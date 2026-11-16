@@ -63,7 +63,7 @@ test('a refreshed assignment closes its old camera form and cannot submit the st
     assert.equal(h.calls.length, 0);
 });
 
-test('pickup moves to Carrying only after the server confirms the handover', t => {
+test('a pickup leaves the queue only after the server confirms the handover', t => {
     const h = harness(t);
     assert.equal(h.button('Assigned to you').props['aria-pressed'], true);
     h.button('Scan waybill · confirm pickup').props.onClick(); h.render();
@@ -73,7 +73,8 @@ test('pickup moves to Carrying only after the server confirms the handover', t =
     const task = h.props.queues.pickupTasks[0];
     h.props = { ...h.props, queues: { ...h.props.queues, pickupTasks: [{ ...task, status: 'picked_up', nextAction: 'await_origin_hub_scan', retainedByCurrentCourier: true }] } };
     options.onSuccess({ props: { flash: {} } }); options.onFinish(); h.render();
-    assert.equal(h.button('Carrying').props['aria-pressed'], true);
+    // Carried parcels are tracked in Trips & History, so the main queue stays on assigned work.
+    assert.equal(h.button('Assigned to you').props['aria-pressed'], true);
     assert.equal(nodes(h.tree).some(node => typeof node.props?.onScan === 'function'), false);
     assert.equal(h.calls.length, 1);
 });

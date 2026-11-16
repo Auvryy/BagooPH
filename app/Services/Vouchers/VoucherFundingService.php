@@ -4,6 +4,7 @@ namespace App\Services\Vouchers;
 
 use App\Models\CheckoutSubmission;
 use App\Models\Order;
+use App\Models\SavedVoucher;
 use App\Models\SellerSettlementEvent;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
@@ -116,6 +117,48 @@ class VoucherFundingService
         $order = Order::with('delivery')->findOrFail($order->id);
         abort_unless(app(OrderLifecycleService::class)->canBuyerCancel($order, $buyer), 403);
         $this->finishCommitments($order, $buyer, 'release', $reason);
+    }
+
+    /**
+     * Give voucher uses back after a cancellation. A use returns once, and only when every order that shared the
+     * redemption is cancelled and each of its funding reservations was released, so the global and per-buyer limits
+     * count only orders that still stand. The restoration row is the once-only guard for wallet and COD orders alike.
+     */
+    public function restoreCancelledUses(Order $order): int
+    {
+        if (DB::transactionLevel() === 0) {
+            throw new DomainException('Voucher uses are restored inside the cancellation transaction.');
+        }
+        $restored = 0;
+        $allocations = VoucherOrderAllocation::where('order_id', $order->id)->with('redemption.revision.voucher')->orderBy('id')->get();
+        foreach ($allocations->unique('voucher_redemption_id')->sortBy(fn ($allocation) => $allocation->redemption->voucher_revision_id) as $allocation) {
+            $redemption = $allocation->redemption;
+            $balance = VoucherRevisionBalance::where('voucher_revision_id', $redemption->voucher_revision_id)->lockForUpdate()->first();
+            if (! $balance || DB::table('wallet_voucher_restorations')->where('voucher_redemption_id', $redemption->id)->exists()) {
+                continue;
+            }
+            $parts = VoucherOrderAllocation::where('voucher_redemption_id', $redemption->id)->with('fundingEntries')->get();
+            if (Order::whereIn('id', $parts->pluck('order_id'))->where('status', '!=', 'cancelled')->exists()) {
+                continue;
+            }
+            $released = $parts->every(fn ($part) => $part->fundingEntries->contains('event_type', 'release')
+                || DB::table('wallet_voucher_releases')->where('voucher_order_allocation_id', $part->id)->exists());
+            if (! $released || $balance->redemption_count < 1) {
+                continue;
+            }
+            $payments = DB::table('wallet_payments')->whereIn('order_id', $parts->pluck('order_id'))->pluck('reference')->all();
+            DB::table('wallet_voucher_restorations')->insert(['voucher_redemption_id' => $redemption->id,
+                'payment_references' => json_encode($payments, JSON_THROW_ON_ERROR), 'created_at' => now()]);
+            $balance->decrement('redemption_count');
+            $voucher = $redemption->revision?->voucher;
+            if ($voucher && $voucher->used_count > 0) {
+                $voucher->decrement('used_count');
+            }
+            SavedVoucher::firstOrCreate(['buyer_id' => $redemption->buyer_id, 'voucher_revision_id' => $redemption->voucher_revision_id]);
+            $restored++;
+        }
+
+        return $restored;
     }
 
     public function recordExpense(Order $order, User $admin, SellerSettlementEvent $event): void

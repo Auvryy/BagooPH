@@ -3,6 +3,7 @@
 namespace Tests\Feature\Seeders;
 
 use App\Models\Advertisement;
+use App\Models\AdvertisementAction;
 use App\Models\AdvertisementPublication;
 use App\Services\Advertisements\AdvertisementReader;
 use Database\Seeders\AdvertisementDemoSeeder;
@@ -41,21 +42,34 @@ class AdvertisementDemoSeederTest extends TestCase
         $advertisement = Advertisement::where('slug', 'bagoo-demo-homepage-banner')->sole();
         $this->assertSame('BagooPH Demo Collection', $advertisement->latestRevision->title);
         $this->assertSame('Synthetic demo content for local review; not a paid seller placement.', $advertisement->latestRevision->summary);
-        $this->assertCount(1, app(AdvertisementReader::class)->homepage(false));
-        $this->assertDatabaseCount('advertisement_actions', 2);
+        $mine = fn () => collect(app(AdvertisementReader::class)->homepage(false))->filter(fn ($banner) => str_contains($banner['href'], 'bagoo-demo-homepage-banner'));
+        $this->assertCount(1, $mine());
+        $this->assertSame(2, AdvertisementAction::where('advertisement_id', $advertisement->id)->count());
         $this->assertDatabaseCount('orders', 0);
         $this->assertTrue(Storage::disk('local')->exists('advertisements/bagoo-demo-homepage-banner/image.webp'));
 
         $publication = AdvertisementPublication::where('advertisement_id', $advertisement->id)->sole();
+        $ads = Advertisement::count();
         $this->seed(AdvertisementDemoSeeder::class);
-        $this->assertDatabaseCount('advertisements', 1);
-        $this->assertDatabaseCount('advertisement_actions', 2);
-        $this->assertCount(1, app(AdvertisementReader::class)->homepage(false));
+        $this->assertSame($ads, Advertisement::count());
+        $this->assertSame(2, AdvertisementAction::where('advertisement_id', $advertisement->id)->count());
+        $this->assertCount(1, $mine());
 
         $publication->update(['ended_at' => now()]);
         $this->seed(AdvertisementDemoSeeder::class);
         $this->assertNotNull($publication->fresh()->ended_at);
-        $this->assertSame([], app(AdvertisementReader::class)->homepage(false));
+        $this->assertCount(0, $mine());
         $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_a_fresh_database_replaces_banner_files_left_by_an_earlier_seed(): void
+    {
+        // ./bagoo.sh fresh wipes the database but keeps stored files; the seed must not stop on them.
+        Storage::disk('local')->put('advertisements/bagoo-demo-homepage-banner/image.webp', 'old artwork from a wiped database');
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertTrue(Advertisement::where('slug', 'bagoo-demo-homepage-banner')->exists());
+        $this->assertSame(hash_file('sha256', public_path('images/buyer/advertisements/demo-preview.webp')),
+            hash('sha256', Storage::disk('local')->get('advertisements/bagoo-demo-homepage-banner/image.webp')));
     }
 }

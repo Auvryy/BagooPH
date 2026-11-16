@@ -37,7 +37,10 @@ class RiderTaskService
             'company_api_version' => $companyAvailable ? 1 : null,
             'placement' => ['company_id' => $profile?->logistics_company_id ? (string) $profile->logistics_company_id : null,
                 'company_name' => $profile?->company?->name, 'hub_id' => $profile?->assigned_hub_id ? (string) $profile->assigned_hub_id : null,
-                'hub_name' => $profile?->hub?->name, 'barangay' => $profile?->assigned_barangay],
+                'hub_name' => $profile?->hub?->name, 'barangay' => $profile?->assigned_barangay,
+                // The map starts routes here when the phone has no location fix yet.
+                'hub_latitude' => $profile?->hub?->latitude !== null ? (float) $profile->hub->latitude : null,
+                'hub_longitude' => $profile?->hub?->longitude !== null ? (float) $profile->hub->longitude : null],
             'eligibility' => ['operational' => $operational, 'can_claim' => $canClaim,
                 'claim_denial' => $canClaim ? null : (! $operational ? 'PLACEMENT_UNAVAILABLE' : (! $profile->is_available ? 'OFF_DUTY' : ($pickups >= Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER ? 'PICKUP_CAPACITY' : 'OTHER_ACTIVE_WORK')))],
             'capacity' => ['active_pickups' => $pickups, 'pickup_limit' => Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER,

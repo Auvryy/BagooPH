@@ -1,6 +1,6 @@
 import React from 'react';
 import CatalogueLink from '@/Components/CatalogueLink';
-import { Star, Truck, ShoppingBag, MapPin, Sparkles, Flame } from 'lucide-react';
+import { Star, Truck, ShoppingBag, MapPin, Sparkles, Flame, Ticket } from 'lucide-react';
 import { Product } from '@/types';
 import { ratingLabel, recordedRating } from '@/Components/RatingStars';
 import { defaultVariantDisplayPrice, defaultVariantRegularPrice } from '@/utils/productPricing';
@@ -106,14 +106,14 @@ export default function ProductCard({
 
                     {product.shop?.vacation_mode && (
                         <span className="absolute left-1.5 bottom-1.5 z-10 rounded bg-[#F59E0B] text-white px-1.5 py-0.5 text-[9px] font-bold shadow-xs">
-                            On Vacation
+                            On vacation
                         </span>
                     )}
 
                     {isOutOfStock && (
                         <span className="absolute inset-0 bg-slate-800/40 backdrop-blur-[1px] flex items-center justify-center z-10">
                             <span className="bg-[#E00D42] text-white font-bold text-[11px] uppercase px-2.5 py-1 rounded-md tracking-wider shadow-md">
-                                Out of Stock
+                                Out of stock
                             </span>
                         </span>
                     )}
@@ -148,6 +148,13 @@ export default function ProductCard({
                                 </span>
                             )}
                         </div>
+                        {product.voucher_hint && (
+                            <p className="inline-flex max-w-full items-center gap-1 rounded border border-brand-500/40 bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700 sm:text-[11px]"
+                                title={product.voucher_hint.min_spend > 0 ? `Shop voucher, min. spend ₱${product.voucher_hint.min_spend.toLocaleString('en-PH')}` : 'Shop voucher'}>
+                                <Ticket className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span className="truncate">Voucher {product.voucher_hint.label}</span>
+                            </p>
+                        )}
                     </div>
 
                     {/* Metadata: Rating, Sales & Location */}

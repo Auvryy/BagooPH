@@ -106,7 +106,8 @@ class RegistrationPolicyTest extends TestCase
     {
         foreach (['', 'seller.', 'courier.', 'hub.', 'admin.'] as $host) {
             foreach (['terms' => 'Terms of Use', 'privacy' => 'Privacy Notice'] as $kind => $title) {
-                $this->get('http://'.$host.'localhost/'.$kind.'/2026-10-12')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Auth/Policy')->where('document.title', $title)->where('document.version', '2026-10-12')->has('document.sections'));
+                $version = $kind === 'terms' ? RegistrationPolicyService::TERMS_VERSION : RegistrationPolicyService::PRIVACY_VERSION;
+                $this->get('http://'.$host.'localhost/'.$kind.'/'.$version)->assertOk()->assertInertia(fn (Assert $page) => $page->component('Auth/Policy')->where('document.title', $title)->where('document.version', $version)->has('document.sections'));
                 $this->get('http://'.$host.'localhost/'.$kind.'/old')->assertNotFound();
             }
         }

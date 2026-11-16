@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     fetchDetailedRoadRoute,
     roadPointDistance,
@@ -53,7 +53,9 @@ export function useDynamicCourierNavigation({
     const [routeLoading, setRouteLoading] = useState(false);
 
     const activeStop = stops.find((s) => String(s.id) === String(selectedId)) || stops[0] || null;
-    const destination: RoadPoint | null = activeStop ? [activeStop.latitude, activeStop.longitude] : null;
+    // Stable references: a new array every render restarted the GPS watch after each update (the map kept jumping).
+    const destination: RoadPoint | null = useMemo(() => (activeStop ? [activeStop.latitude, activeStop.longitude] : null),
+        [activeStop?.latitude, activeStop?.longitude]);
 
     const lastRoutedPosition = useRef<RoadPoint | null>(null);
     const routeAbortController = useRef<AbortController | null>(null);
@@ -111,8 +113,8 @@ export function useDynamicCourierNavigation({
         [apiKey, mode]
     );
 
-    const validFallbackOrigin: RoadPoint | null =
-        fallbackOrigin && validRoadPoint(fallbackOrigin) ? fallbackOrigin : null;
+    const validFallbackOrigin: RoadPoint | null = useMemo(() => (fallbackOrigin && validRoadPoint(fallbackOrigin) ? fallbackOrigin : null),
+        [fallbackOrigin?.[0], fallbackOrigin?.[1]]);
 
     // Route from assigned hub fallback until live GPS arrives
     useEffect(() => {
@@ -136,7 +138,8 @@ export function useDynamicCourierNavigation({
             const point: RoadPoint = [pos.coords.latitude, pos.coords.longitude];
             if (!validRoadPoint(point)) return;
 
-            setCurrentPosition(point);
+            // Ignore GPS jitter under 5 m so the screen does not re-render on every tiny fix.
+            setCurrentPosition(previous => (previous && roadPointDistance(previous, point) < 5 ? previous : point));
             setHeading(pos.coords.heading ?? null);
             setSpeed(pos.coords.speed ?? null);
             setAccuracy(pos.coords.accuracy ?? null);

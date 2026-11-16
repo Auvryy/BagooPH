@@ -195,8 +195,8 @@ test('seller draft has the real upload limits and owned destinations without pub
 });
 test('seller review and actual display state remain separate and duplicate submission is disabled', async () => {
     const html = await render(ui.SellerEditor, sellerProps(sellerPromotion), 'seller');
-    assert.match(html, /Review: <strong>Under review<\/strong>/);
-    assert.match(html, /Display: <strong>Not published<\/strong>/);
+    assert.match(html, /Review <span[^>]*>[\s\S]*?Under review<\/span>/);
+    assert.match(html, /Display <span[^>]*>[\s\S]*?Not published<\/span>/);
     assert.match(html.match(/<button\b[^>]*>Waiting for review<\/button>/)[0], /disabled=""/);
     assert.match(html, /Withdraw this version/);
 });

@@ -95,7 +95,7 @@ class RealCarousellProductSeeder extends Seeder
                         'status' => 'active',
                         'kyc_status' => 'approved',
                         'email_verified_at' => now(),
-                        'phone' => '+63917' . str_pad((string) mt_rand(1000000, 9999999), 7, '0', STR_PAD_LEFT),
+                        'phone' => '+63917'.str_pad((string) mt_rand(1000000, 9999999), 7, '0', STR_PAD_LEFT),
                         'city' => $loc['city'],
                         'address' => $loc['address'],
                         'postal_code' => $loc['pickup_postal_code'] ?? null,
@@ -209,12 +209,13 @@ class RealCarousellProductSeeder extends Seeder
                     $subSlug = $prodData['sub_slug'] ?? ($subSlugs[$pIdx] ?? null);
                     $subCategory = $subSlug ? SubCategory::where('slug', $subSlug)->first() : null;
 
-                    $prodName = trim($prodData['title']);
-                    if (strlen($prodName) < 5) {
-                        $prodName = $category->name . ' - ' . $prodData['query'];
+                    // Scraped titles carry HTML entities ("&amp;", "&#x27;") and double spaces; store plain text.
+                    $prodName = trim(preg_replace('/\s+/u', ' ', html_entity_decode($prodData['title'], ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+                    if (mb_strlen($prodName) < 5) {
+                        $prodName = $category->name.' - '.$prodData['query'];
                     }
-                    if (strlen($prodName) > 120) {
-                        $prodName = substr($prodName, 0, 117) . '...';
+                    if (mb_strlen($prodName) > 120) {
+                        $prodName = mb_substr($prodName, 0, 117).'...';
                     }
 
                     $existingProduct = Product::where('shop_id', $shop->id)
@@ -245,13 +246,14 @@ class RealCarousellProductSeeder extends Seeder
                                 : 10.00,
                             'status' => 'active',
                         ]);
+
                         continue;
                     }
 
                     $skuPrefix = strtoupper(substr(str_replace('-', '', $categorySlug), 0, 4));
-                    $sku = "BGO-{$skuPrefix}-" . str_pad((string) ($pIdx + 1), 3, '0', STR_PAD_LEFT);
+                    $sku = "BGO-{$skuPrefix}-".str_pad((string) ($pIdx + 1), 3, '0', STR_PAD_LEFT);
                     while (Product::where('sku', $sku)->exists()) {
-                        $sku = "BGO-{$skuPrefix}-" . mt_rand(100, 999);
+                        $sku = "BGO-{$skuPrefix}-".mt_rand(100, 999);
                     }
 
                     $slug = Product::generateUniqueSlug($prodName);
@@ -273,8 +275,9 @@ class RealCarousellProductSeeder extends Seeder
                         'width_cm' => 18.00,
                         'height_cm' => 10.00,
                         'status' => 'active',
-                        'rating' => round(4.7 + (mt_rand(0, 3) / 10), 1),
-                        'sales_count' => mt_rand(45, 680),
+                        // Ratings and sales come only from real orders and reviews.
+                        'rating' => 0,
+                        'sales_count' => 0,
                         'brand' => 'Authentic Marketplace Goods',
                         'condition' => 'new',
                     ]);

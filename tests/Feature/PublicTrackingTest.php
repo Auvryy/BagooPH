@@ -86,7 +86,7 @@ class PublicTrackingTest extends TestCase
                 ->assertJsonPath('parcel.delivery_phone', '••• ••• 4567');
             $this->assertSame([
                 'tracking_number', 'status', 'order_status', 'delivery_recipient_name', 'delivery_phone',
-                'delivery_address', 'estimated_delivery_at', 'delivered_at', 'checkpoints',
+                'delivery_address', 'estimated_delivery_at', 'eta', 'delivered_at', 'checkpoints', // eta: public-safe window and labels only
             ], array_keys($response->json('parcel')));
             $json = json_encode($response->json('parcel'), JSON_UNESCAPED_UNICODE);
             foreach (['José Li', '+639171234567', 'Unit 17', 'Private', '/storage/', 'BGO-ORDER-PRIVATE'] as $secret) {

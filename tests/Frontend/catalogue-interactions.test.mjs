@@ -233,7 +233,7 @@ test('admin directory search guards duplicates, narrows coherent reads and follo
     assert.equal(all(tree).find(n => n.type === 'input').props.value, '  Maria Santos  ');
     props.filters = { search: 'Previous query', role: 'seller' }; tree = h.render();
     input = all(tree).find(n => n.type === 'input'); assert.equal(input.props.value, 'Previous query');
-    all(tree).find(n => n.type === 'button' && n.props.children === 'buyer').props.onClick();
+    all(tree).find(n => n.type === 'button' && n.props.children === 'Buyers').props.onClick();
     assert.equal(h.visits[1].url, '/admin/users?search=Previous+query&role=buyer');
 });
 

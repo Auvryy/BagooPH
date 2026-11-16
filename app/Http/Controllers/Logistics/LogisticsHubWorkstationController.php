@@ -10,8 +10,10 @@ use App\Models\HubHandler;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
+use App\Models\LogisticsManifestParcel;
 use App\Models\MissingParcelInvestigation;
 use App\Models\MotherBag;
+use App\Models\MotherBagParcel;
 use App\Models\Order;
 use App\Models\SlaPause;
 use App\Models\User;
@@ -27,6 +29,7 @@ use App\Services\Logistics\HubBatchScanService;
 use App\Services\Logistics\HubParcelWorkstationService;
 use App\Services\Logistics\HubScanTransferService;
 use App\Services\Logistics\LogisticsEligibilityService;
+use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\LogisticsSortingInputService;
@@ -41,6 +44,7 @@ use App\Services\Monitoring\EtaCalculationService;
 use App\Services\Returns\BuyerReturnRecoveryService;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -805,6 +809,8 @@ class LogisticsHubWorkstationController extends Controller
                     'destination_hub_latitude' => $d->destinationBayanHub?->latitude !== null ? (float) $d->destinationBayanHub->latitude : null,
                     'destination_hub_longitude' => $d->destinationBayanHub?->longitude !== null ? (float) $d->destinationBayanHub->longitude : null,
                     'rider_name' => $d->assignedRider?->name ?? ($d->courier?->name ?? 'Unassigned'),
+                    // Before a delivery rider is assigned, the name shown is the rider who picked it up.
+                    'rider_label' => ! $d->assignedRider && $d->courier ? 'Pickup rider' : 'Delivery rider',
                     'first_mile_rider_name' => $d->courier?->name,
                     'final_mile_rider_name' => $d->assignedRider?->name,
                     'total_amount' => (float) ($d->order?->total_amount ?? 0),
@@ -1247,6 +1253,13 @@ class LogisticsHubWorkstationController extends Controller
             return $this->operationError($request, 'The scan instruction no longer matches the parcel route. Scan the waybill again.', 409);
         }
 
+        // Bagging already chooses the next hub. Sorting a parcel that is inside an open or sealed bag would change
+        // its packed custody and stop the bag from sealing or leaving, so the bag stands in for the sort.
+        if ($requestedAction === 'SORT_TO_LINE_HAUL' && MotherBagParcel::where('active_delivery_id', $delivery->id)
+            ->whereHas('bag', fn ($bag) => $bag->whereIn('status', ['open', 'sealed']))->exists()) {
+            return $this->operationError($request, 'This parcel is already in a Mother Bag for its next hub, so it needs no separate sort.', 409);
+        }
+
         $stateMachine = app(OrderStateMachineService::class);
 
         try {
@@ -1258,6 +1271,7 @@ class LogisticsHubWorkstationController extends Controller
                 'START_EXPIRED_PICKUP_RETURN' => app(PickupClaimService::class)->beginReturn($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['claim_reference'] ?? ''),
                 'STAGE_SELLER_RETURN' => app(DeliveryReturnService::class)->stage($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['route_reference'] ?? ''),
                 'RECEIVE_FAILED_DELIVERY' => $recovery->receive($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['attempt_reference'] ?? ''),
+                'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB' => $this->receiveOnArrivingManifest($delivery, $request->user(), $hub, $barcode, $validated['notes'] ?? null),
                 'RELEASE_APPROVED_RETRY' => $recovery->beginRetry($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['attempt_reference'] ?? ''),
                 default => $stateMachine->transition(
                     delivery: $delivery,
@@ -1316,6 +1330,37 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         return back()->with('scan_result', $payload);
+    }
+
+    /**
+     * One scan receives a parcel that arrived on a manifest at this hub, so phone-only intake workers can finish
+     * receipt without the Manifests screen. The manifest service keeps every rule (opened Mother Bag, route, custody);
+     * once the last parcel is in and nothing is disputed, the manifest closes so the next handover can start.
+     */
+    private function receiveOnArrivingManifest(Delivery $delivery, User $actor, LogisticsHub $hub, string $barcode, ?string $notes): Delivery
+    {
+        if (! app(LogisticsEligibilityService::class)->canIntake($actor, $hub)) {
+            throw new DomainException('Your hub job is Bagging & dispatch only. Ask your hub to give you Intake to receive parcels.');
+        }
+        $member = LogisticsManifestParcel::where('active_delivery_id', $delivery->id)->where('included', true)->whereNull('received_at')
+            ->whereHas('manifest', fn ($query) => $query->where('destination_hub_id', $hub->id)->where('status', 'dispatched'))
+            ->with('manifest')->first();
+        if (! $member) {
+            throw new DomainException('This parcel is not on a manifest arriving at this hub. Check its route before receiving it.');
+        }
+        $manifests = app(LogisticsManifestService::class);
+        $manifests->command($member->manifest, $actor, 'receive', ['version' => $member->manifest->version,
+            'request_token' => (string) Str::uuid(), 'barcode' => $barcode, 'notes' => $notes]);
+        $manifest = $member->manifest->fresh();
+        if ($manifest->status === 'received') {
+            try {
+                $manifests->command($manifest, $actor, 'close', ['version' => $manifest->version, 'request_token' => (string) Str::uuid()]);
+            } catch (DomainException|ValidationException|AuthorizationException) {
+                // A disputed or incomplete manifest stays open for its review on the Manifests screen.
+            }
+        }
+
+        return $delivery->fresh();
     }
 
     /**
@@ -1457,7 +1502,7 @@ class LogisticsHubWorkstationController extends Controller
             $guidance['href'] .= '&search='.rawurlencode($delivery->tracking_number);
         }
         $custodyHub = $delivery->currentHub;
-        $requiresManifest = in_array($prompt['action'], ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB', 'DISPATCH_RETURN_MANIFEST', 'RECEIVE_RETURN_MANIFEST'], true);
+        $requiresManifest = in_array($prompt['action'], ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'DISPATCH_RETURN_MANIFEST', 'RECEIVE_RETURN_MANIFEST'], true);
         $canConfirm = $requiresConfirmation && ! $requiresManifest && $guidance['can_act'] && $guidance['action'] === 'scan';
         $routingEngine = app(LogisticsRoutingEngine::class);
         $nextHop = $routingEngine->computeNextHop($delivery, $hub);

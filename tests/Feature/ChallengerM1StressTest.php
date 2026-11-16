@@ -38,7 +38,7 @@ class ChallengerM1StressTest extends TestCase
 
         $productA = Product::create([
             'shop_id' => $shop->id,
-            'category_id' => $category->id,
+            'category_id' => $shop->root_category_id, 'weight_kg' => 0.5, 'length_cm' => 20, 'width_cm' => 15, 'height_cm' => 10,
             'name' => 'Leather Oxford Shoes',
             'slug' => 'leather-oxford-shoes',
             'sku' => 'SHOE-OXF',
@@ -50,7 +50,7 @@ class ChallengerM1StressTest extends TestCase
 
         $productB = Product::create([
             'shop_id' => $shop->id,
-            'category_id' => $category->id,
+            'category_id' => $shop->root_category_id, 'weight_kg' => 0.5, 'length_cm' => 20, 'width_cm' => 15, 'height_cm' => 10,
             'name' => 'Canvas Sneakers',
             'slug' => 'canvas-sneakers',
             'sku' => 'SHOE-SNK',
@@ -123,8 +123,8 @@ class ChallengerM1StressTest extends TestCase
         $this->assertEquals(0, $cart1->fresh()->items()->count());
         $this->assertEquals(2, $cart2->fresh()->items()->count());
 
-        // Buyer 2 Checks out
-        $this->actingAs($buyer2)->post('/checkout', [
+        // Buyer 2 Checks out. An unsupported card payment is refused outright (nothing is ordered), then COD succeeds.
+        $buyer2Checkout = fn (string $method) => $this->actingAs($buyer2)->post('/checkout', [
             'checkout_token' => $this->checkoutToken($buyer2),
             'recipient_name' => 'Buyer Two',
             'recipient_phone' => '+63 918 333 4444',
@@ -134,8 +134,11 @@ class ChallengerM1StressTest extends TestCase
             'shipping_province' => 'Metro Manila',
             'destination_barangay' => 'Poblacion',
             'item_ids' => $cart2->items()->pluck('id')->all(),
-            'payment_method' => 'card',
-        ])->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
+            'payment_method' => $method,
+        ]);
+        $buyer2Checkout('card')->assertSessionHasErrors();
+        $this->assertSame(0, Order::where('buyer_id', $buyer2->id)->count());
+        $buyer2Checkout('cod')->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
 
         $this->assertSame('cod', Order::where('buyer_id', $buyer2->id)->firstOrFail()->payment_method);
         $this->assertEquals(0, $cart2->fresh()->items()->count());
@@ -159,7 +162,7 @@ class ChallengerM1StressTest extends TestCase
 
         $product = Product::create([
             'shop_id' => $shop->id,
-            'category_id' => $category->id,
+            'category_id' => $shop->root_category_id, 'weight_kg' => 0.5, 'length_cm' => 20, 'width_cm' => 15, 'height_cm' => 10,
             'name' => 'Philippine History Hardcover',
             'slug' => 'philippine-history-hardcover',
             'sku' => 'BOOK-PH-001',
@@ -248,7 +251,7 @@ class ChallengerM1StressTest extends TestCase
 
         $product = Product::create([
             'shop_id' => $shop->id,
-            'category_id' => $category->id,
+            'category_id' => $shop->root_category_id, 'weight_kg' => 0.5, 'length_cm' => 20, 'width_cm' => 15, 'height_cm' => 10,
             'name' => 'USB-C Cable',
             'slug' => 'usb-c-cable',
             'sku' => 'CABLE-001',

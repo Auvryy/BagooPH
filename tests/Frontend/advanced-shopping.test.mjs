@@ -40,11 +40,12 @@ test('sale cards show the actual discounted base and strike the actual regular p
     assert.match(html, /line-through[^>]*>\s*₱500\.00/);
     assert.doesNotMatch(html, /₱999/);
 });
-test('vacation listings remain links and disable the quick purchase action', () => {
+test('vacation listings remain links and offer no purchase action on the card', () => {
     const html = renderToStaticMarkup(createElement(ui.Card, { product: { ...product, shop: { ...shop, vacation_mode: true } }, onQuickAdd: () => {} }));
     assert.match(html, /On vacation/);
     assert.match(html, /<a /);
-    assert.match(html, /<button[^>]*\sdisabled(?:[\s=>])/);
+    // Cards no longer carry a quick-add button; buying happens on the product page.
+    assert.doesNotMatch(html, /Add to Bag/);
 });
 test('mixed store sale and ordinary quantities show sale pricing segments', () => {
     const html = renderToStaticMarkup(createElement(ui.Segments, { quantity: 3, unitPrice: 299, segments: [{ quantity: 1, unit_price: 299, subtotal: 299, sale_kind: 'store' }, { quantity: 2, unit_price: 399, subtotal: 798 }], detailed: true }));

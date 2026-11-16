@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { Badge } from '@/Components/ui';
 import { PaginatedData, Product } from '@/types';
 import AdminDirectoryPagination from '@/Components/AdminDirectoryPagination';
 
@@ -28,8 +29,8 @@ export default function AdminProducts({ products, moderationBaseUrl }: Props) {
                             <td className="px-4 py-4">{product.shop?.name ?? 'Shop unavailable'}</td>
                             <td className="px-4 py-4 font-semibold">{money.format(Number(product.price))}</td>
                             <td className="px-4 py-4 capitalize">{product.status}</td>
-                            <td className="px-4 py-4"><span className={'rounded-full px-2.5 py-1 text-xs font-semibold ' + (product.compliance_restricted ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700')}>{product.compliance_restricted ? 'Restricted' : 'No platform restriction'}</span></td>
-                            <td className="px-5 py-4 text-right"><Link href={moderationBaseUrl + '/' + product.id + '/moderation'} className="inline-block rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold hover:border-[#E00D42] hover:text-[#E00D42]">Review compliance</Link></td>
+                            <td className="px-4 py-4"><Badge tone={product.compliance_restricted ? 'danger' : 'success'}>{product.compliance_restricted ? 'Restricted' : 'Allowed'}</Badge></td>
+                            <td className="px-5 py-4 text-right"><Link href={moderationBaseUrl + '/' + product.id + '/moderation'} className="inline-block whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold hover:border-[#E00D42] hover:text-[#E00D42]">Review</Link></td>
                         </tr>)}
                     </tbody>
                 </table>

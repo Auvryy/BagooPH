@@ -144,25 +144,27 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
 
             <div className="courier-content min-w-0">
                 <header className="relative z-30 shrink-0 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
-                    <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-                        <div className={courierClasses('flex min-w-0 items-center gap-3 sm:w-auto sm:flex-1', isChat ? 'w-auto' : 'w-full')}>
+                    {/* Phones keep one row: the brand block shrinks, the duty switch goes compact and refresh moves into the account menu. */}
+                    <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-3">
+                        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                             <CourierSidebarToggle open={desktop ? !sidebarCollapsed : mobileSidebarOpen} mobile={!desktop} onClick={toggleSidebar} />
                             <div className={courierClasses('min-w-0', isChat && 'hidden sm:block')}>
                                 <PortalLink href={courierPath('/deliveries')} className="inline-flex min-h-12 items-center text-lg font-bold xl:hidden">Bagoo<span className="text-[#E00D42]">PH</span></PortalLink>
                                 <p className="hidden items-center gap-2 text-sm text-slate-600 xl:flex"><span>Workspace</span><ChevronRight className="h-4 w-4" aria-hidden="true" /><span className="font-medium text-slate-900">{currentPage}</span></p>
-                                <p className="mt-1 break-words text-xs text-slate-600">{hub}{hubCode ? ` · ${hubCode}` : ''}</p>
+                                <p className="mt-1 truncate text-xs text-slate-600">{hub}{hubCode ? ` · ${hubCode}` : ''}</p>
                             </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                             <NotificationLink />
-                            <CourierDutySwitch isOnline={isOnline} busy={dutyLoading} compact={isChat} onChange={requestDutyChange} />
-                            <button type="button" onClick={refresh} disabled={refreshing} aria-label={refreshing ? 'Refreshing records' : 'Refresh records'} className={courierClasses(courierButton, 'h-12 w-12 border-transparent p-0 hover:border-slate-300')}><RefreshCw className="h-[18px] w-[18px]" aria-hidden="true" /></button>
+                            <CourierDutySwitch isOnline={isOnline} busy={dutyLoading} compact onChange={requestDutyChange} />
+                            <button type="button" onClick={refresh} disabled={refreshing} aria-label={refreshing ? 'Refreshing records' : 'Refresh records'} className={courierClasses(courierButton, 'hidden h-12 w-12 border-transparent p-0 hover:border-slate-300 sm:inline-flex')}><RefreshCw className="h-[18px] w-[18px]" aria-hidden="true" /></button>
                             <div ref={menu} className="relative" onMouseEnter={openMenu} onMouseLeave={scheduleClose} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) scheduleClose(); }}>
                                 <button ref={menuButton} type="button" aria-label="Account options" aria-expanded={menuOpen} aria-controls="rider-account-options" onClick={() => { clearMenuTimeout(); if (menuOpen && menuClicked.current) closeMenu(); else { menuClicked.current = true; setMenuOpen(true); } }} className={courierClasses(courierButton, 'h-12 w-12 rounded-full border-slate-300 bg-slate-100 p-0 text-slate-800 hover:bg-slate-200')}><span aria-hidden="true">{initials}</span></button>
                                 {menuOpen && (
                                     <div id="rider-account-options" className="courier-enter absolute right-0 top-[calc(100%-2px)] w-[min(18rem,calc(100vw-2rem))] pt-2" onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
                                         <div className="rounded-[8px] border border-slate-300 bg-white p-2 shadow-lg">
                                             <p className="break-words px-3 py-2 text-sm font-semibold">{auth.user?.name}<span className="mt-1 block break-all font-normal text-slate-600">{auth.user?.email}</span></p>
+                                            <button type="button" onClick={() => { closeMenu(); refresh(); }} disabled={refreshing} className={`${courierButton} w-full justify-start border-transparent sm:hidden`}><RefreshCw className="h-4 w-4" aria-hidden="true" />{refreshing ? 'Refreshing…' : 'Refresh records'}</button>
                                             <PortalLink href={courierPath('/profile')} className={`${courierButton} w-full justify-start border-transparent`}><UserRound className="h-4 w-4" aria-hidden="true" />Account settings</PortalLink>
                                             <Link href={route('account.status')} className={`${courierButton} w-full justify-start border-transparent`}><UserRound className="h-4 w-4" aria-hidden="true" />Account status</Link>
                                             <Link href="/logout" method="post" as="button" className={`${courierButton} w-full justify-start border-transparent`}><LogOut className="h-4 w-4" aria-hidden="true" />Sign out</Link>
@@ -190,7 +192,8 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
             </div>
 
             <nav aria-label="Rider navigation" className="courier-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-2 border-t border-slate-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 xl:hidden">
-                {navItems.map(({ name, path, page, icon: Icon }) => (
+                {/* Four items fit one row on a phone; Profile stays in the account menu and the sidebar. */}
+                {navItems.filter(item => item.name !== 'Profile').map(({ name, path, page, icon: Icon }) => (
                     <PortalLink key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${component === page ? 'bg-slate-100 text-slate-950' : 'text-slate-600'}`}><Icon className="h-5 w-5" aria-hidden="true" /><span className="break-words">{name}</span></PortalLink>
                 ))}
             </nav>

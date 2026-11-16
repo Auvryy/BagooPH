@@ -13,8 +13,11 @@ class CourierOutcomeService
     public function record(User $actor, Delivery $parcel, string $target, array $evidence): Delivery
     {
         return DB::transaction(function () use ($actor, $parcel, $target, $evidence) {
+            $before = $parcel->status;
             $updated = app(OrderStateMachineService::class)->transition($parcel, $target, $actor, $evidence);
-            if (! $updated->wasChanged('status')) {
+            // The state machine returns a freshly loaded parcel, so compare statuses instead of wasChanged():
+            // an idempotent retry (same status) records nothing extra.
+            if ($updated->status === $before || $updated->status !== $target) {
                 return $updated;
             }
             $note = $evidence['notes'] ?? null;

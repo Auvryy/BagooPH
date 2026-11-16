@@ -3,9 +3,7 @@
 namespace Tests\Feature\Buyer;
 
 use App\Models\Cart;
-use App\Models\Category;
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use Database\Factories\ShopFactory;
@@ -26,18 +24,13 @@ class InventoryCheckoutTest extends TestCase
         Storage::fake('local');
         $this->seed(DatabaseSeeder::class);
         $shop = Shop::whereHas('user', fn ($owner) => $owner->where('email', 'seller@bagoo.test'))->firstOrFail();
-        $root = Category::where('name', "Men's Apparel")->whereNull('parent_id')->firstOrFail();
-        $shop->update(['root_category_id' => $root->id]);
-        foreach ($shop->products()->with('category')->get() as $product) {
-            $product->category->update(['parent_id' => $root->id]);
-        }
         ShopFactory::recordApprovalFixture($shop);
     }
 
     public function test_stock_is_decremented_at_checkout_not_when_added_to_the_bag_and_restored_once_on_cancellation(): void
     {
         $buyer = User::where('email', 'buyer@bagoo.test')->firstOrFail();
-        $product = Product::where('status', 'active')->firstOrFail();
+        $product = $this->shop()->products()->where('status', 'active')->firstOrFail();
         $product->update(['stock' => 20, 'sales_count' => 0, 'variants' => null]);
         Cart::where('user_id', $buyer->id)->delete();
 
@@ -71,7 +64,9 @@ class InventoryCheckoutTest extends TestCase
             ->post(route('seller.orders.cancel', $order), [
                 'reason' => 'Repeated cancellation attempt',
             ])
-            ->assertSessionHas('error');
+            // A repeated cancel is a safe retry: no error, and stock is not restored a second time.
+            ->assertSessionHasNoErrors();
+        $this->assertSame('cancelled', $order->fresh()->status);
 
         $this->assertSame(20, $product->fresh()->stock);
     }
@@ -79,7 +74,7 @@ class InventoryCheckoutTest extends TestCase
     public function test_checkout_rejects_aggregate_variant_lines_that_exceed_product_stock(): void
     {
         $buyer = User::where('email', 'buyer@bagoo.test')->firstOrFail();
-        $product = Product::where('status', 'active')->firstOrFail();
+        $product = $this->shop()->products()->where('status', 'active')->firstOrFail();
         $product->update([
             'stock' => 10,
             'variants' => [
@@ -132,5 +127,10 @@ class InventoryCheckoutTest extends TestCase
             'payment_method' => 'cod',
             'item_ids' => $itemIds,
         ];
+    }
+
+    private function shop(): Shop
+    {
+        return Shop::whereHas('user', fn ($owner) => $owner->where('email', 'seller@bagoo.test'))->firstOrFail();
     }
 }

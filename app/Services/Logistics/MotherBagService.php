@@ -43,10 +43,15 @@ class MotherBagService
             'physical_tag' => ['nullable', 'string', 'max:80', 'regex:/\A[A-Z0-9-]+\z/'],
             'physical_checked' => 'sometimes|boolean',
             'capacity_preset' => 'nullable|string|in:standard,compact,bulk,custom',
-            'max_count' => 'nullable|integer|between:1,500',
-            'max_weight_kg' => 'nullable|numeric|min:1|max:200',
+            // A custom bag needs its own limits; a blank field must not quietly fall back to the standard size.
+            'max_count' => 'required_if:capacity_preset,custom|nullable|integer|between:1,500',
+            'max_weight_kg' => 'required_if:capacity_preset,custom|nullable|numeric|min:1|max:200|decimal:0,3',
             'max_volume_cm3' => 'nullable|integer|between:10000,2000000',
             'max_volume_m3' => 'nullable|numeric|min:0.01|max:2.0',
+        ], [
+            'max_count.*' => 'Enter how many parcels the bag holds, from 1 to 500.',
+            'max_weight_kg.*' => 'Enter the bag weight limit in kg, from 1 to 200.',
+            'max_volume_m3.*' => 'Enter the bag volume in cubic metres, from 0.01 to 2.',
         ])->validate();
 
         return DB::transaction(function () use ($actor, $data) {
@@ -123,6 +128,12 @@ class MotherBagService
             if ($parcel->current_hub_id !== $source->id || $parcel->logistics_company_id !== $source->logistics_company_id
                 || app(LogisticsManifestService::class)->nextHub($parcel) !== $next) {
                 throw new DomainException('The parcel must be held at the selected sending hub on its retained next leg.');
+            }
+            $arrived = LogisticsManifestParcel::where('active_delivery_id', $parcel->id)->whereNotNull('received_at')
+                ->whereHas('manifest', fn ($q) => $q->where('destination_hub_id', $source->id)->where('status', 'received'))->with('manifest:id,reference')->first();
+            if ($arrived) {
+                // Received here, but its arriving transfer is still open: say exactly what to do next.
+                throw new DomainException("This parcel arrived on transfer {$arrived->manifest->reference}, which is still open. Close that received transfer in Manifests, then pack the parcel.");
             }
             if (MotherBagParcel::where('active_delivery_id', $parcel->id)->exists() || LogisticsManifestParcel::where('active_delivery_id', $parcel->id)->exists()) {
                 throw new DomainException('This parcel already belongs to an active bag or manifest. Open its original packing record.');
@@ -261,6 +272,17 @@ class MotherBagService
                     throw new DomainException('This parcel belongs on a different route. Keep it at its recorded hub and check the next stop.');
                 }
                 if ($action === 'add') {
+                    // Bagging a parcel for its next Mother Hub is its line-haul sort: record that sort first, so the bag
+                    // packs the sorted custody and can seal and leave without a separate sort scan.
+                    if ($parcel->status === OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB
+                        && (app(LogisticsRoutingEngine::class)->getDynamicScanPrompt($parcel, $hub)['action'] ?? null) === 'SORT_TO_LINE_HAUL'
+                        && ! MotherBagParcel::where('active_delivery_id', $parcel->id)->exists()) {
+                        $parcel = app(OrderStateMachineService::class)->transition($parcel, OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL, $actor, [
+                            'hub_id' => $hub->id, 'barcode' => $data['barcode'], 'location_name' => "{$hub->name} ({$hub->code})",
+                            'facility_code' => $hub->code, 'scan_action' => 'SORT_TO_LINE_HAUL', 'expected_status' => $parcel->status,
+                            'notes' => 'Sorted by packing into Mother Bag '.$bag->reference.'.',
+                        ])->fresh(['order']);
+                    }
                     if (MotherBagParcel::where('active_delivery_id', $parcel->id)->exists()) {
                         throw new DomainException('This parcel is already inside another active Mother Bag.');
                     }
@@ -294,7 +316,7 @@ class MotherBagService
                     }
                     foreach ($bag->parcels()->whereNull('removed_at')->with('delivery')->get() as $packed) {
                         if ($packed->active_delivery_id !== $packed->delivery_id || ! ($packed->handling_snapshot['baggable'] ?? false) || $packed->source_state !== DeliveryCheckpoint::state($packed->delivery)) {
-                            throw new DomainException('A bag member changed. Recheck the actual contents before sealing.');
+                            throw new DomainException('A parcel in this bag changed after it was packed. Remove it and scan it into the bag again before sealing.');
                         }
                     }
                 }

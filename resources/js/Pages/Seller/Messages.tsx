@@ -1,3 +1,4 @@
+import PortalLink from '@/Components/PortalLink';
 import useMarketplaceComposer from '@/hooks/useMarketplaceComposer';
 import ChatImageField from '@/Components/ChatImageField';
 import ChatAttachment from '@/Components/ChatAttachment';
@@ -173,7 +174,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
 
                     <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-slate-100">
                         {filteredConversations.length === 0 ? (
-                            <p className="text-xs text-slate-600 py-12 text-center font-sans">No conversations found.</p>
+                            <div className="py-12 text-center font-sans"><p className="text-xs text-slate-600">No conversations yet. Buyers' questions and order chats appear here.</p><PortalLink href="/seller/orders" className="mt-3 inline-flex h-9 items-center rounded-control border border-line-300 bg-white px-3 text-[13px] font-semibold text-ink-900 hover:bg-surface-100">Open orders</PortalLink></div>
                         ) : (
                             filteredConversations.map((c) => {
                                 const isSelected = activeUser?.id === c.user?.id;

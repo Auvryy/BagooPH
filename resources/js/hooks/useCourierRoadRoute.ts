@@ -62,7 +62,7 @@ export default function useCourierRoadRoute(job: CourierMapJob | undefined, dest
         const refresh = async (position: GeolocationPosition) => {
             if (cancelled) return;
             const now = Date.now(), point: RoadPoint = [position.coords.latitude, position.coords.longitude];
-            if (!validRoadPoint(point) || !Number.isFinite(position.coords.accuracy) || position.coords.accuracy > 50 || position.coords.accuracy < 0
+            if (!validRoadPoint(point) || !Number.isFinite(position.coords.accuracy) || position.coords.accuracy > 100 || position.coords.accuracy < 0
                 || !Number.isFinite(position.timestamp) || now - position.timestamp > 30000 || position.timestamp > now + 1000) {
                 routeAbort?.abort(); previous = null; latestPoint = null; lastRoute = 0;
                 setResult(null); setMessage('Waiting for a fresh, accurate location before calculating a route.'); return;

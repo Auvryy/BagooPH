@@ -154,7 +154,7 @@ export default function SellerProfile({ user, shop }: Props) {
                     </Link>
                     <Link
                         href={route('seller.profile')}
-                        className="px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 bg-slate-900 text-white shadow-xs"
+                        className="px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 bg-brand-50 text-brand-700"
                     >
                         <UserIcon className="w-3.5 h-3.5" />
                         <span>Merchant Account & Profile</span>
@@ -234,7 +234,7 @@ export default function SellerProfile({ user, shop }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                        className="px-4 py-2 border border-line-300 bg-white hover:bg-surface-100 text-ink-900 rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                                     >
                                         <Upload className="w-3.5 h-3.5" />
                                         <span>{avatarPreview ? 'Upload / Change Photo' : 'Upload Photo'}</span>

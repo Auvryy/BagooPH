@@ -75,8 +75,10 @@ class GovernanceModerationController extends Controller
             : collect();
 
         $breachedSlaClocks = SlaClock::with(['delivery:id,tracking_number,order_id', 'company:id,name', 'hub:id,name,province'])
-            ->where('stage', 'pickup')
-            ->where('status', 'breached')
+            // Pickup clocks whose breach moment has passed (clocks are running or stopped; breach is a time, not a status).
+            ->where('clock_kind', 'like', '%pickup%')->where('clock_kind', '!=', 'counter_pickup_holding')
+            ->where('status', '!=', 'paused')
+            ->whereNotNull('breach_at')->where('breach_at', '<=', now())
             ->latest('breach_at')->limit(30)->get();
 
         $deliveriesForScale = Delivery::with('order:id,order_number')

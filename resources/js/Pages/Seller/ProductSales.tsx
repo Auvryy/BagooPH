@@ -6,7 +6,7 @@ import { ArrowLeft, CalendarClock, Pencil, X } from 'lucide-react';
 import { percentagePrice } from '@/utils/productPricing';
 
 interface Sale {
-    id: number; kind: 'store' | 'flash'; name: string; price: string; discount_type?: 'fixed' | 'percentage'; percentage?: number | null;
+    id: number; kind: 'store'; name: string; price: string; discount_type?: 'fixed' | 'percentage'; percentage?: number | null;
     starts_at: string; ends_at: string; quantity: number | null; used_quantity: number; ended_at: string | null;
 }
 interface Props { shop: Shop; product: Product; sales: PaginatedData<Sale> }

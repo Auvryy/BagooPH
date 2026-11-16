@@ -69,6 +69,6 @@ export default function ShopReviews({ shops, filters }: Props) {
             </section>)}
             {!shops.data.length && <p className="rounded-lg border border-slate-300 bg-white p-6 text-slate-600">No shops match these filters.</p>}
         </div>
-        <nav aria-label="Shop review pages" className="mt-5 flex flex-wrap gap-2">{shops.links.map((link, index) => link.url ? <Link key={index} href={link.url} aria-current={link.active ? 'page' : undefined} className={`rounded-lg border border-slate-300 px-3 py-2 text-sm ${link.active ? 'bg-slate-900 text-white' : 'bg-white'}`} dangerouslySetInnerHTML={{ __html: link.label }} /> : <span key={index} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-400" dangerouslySetInnerHTML={{ __html: link.label }} />)}</nav>
+        <nav aria-label="Shop review pages" className="mt-5 flex flex-wrap gap-2">{shops.links.map((link, index) => link.url ? <Link key={index} href={link.url} aria-current={link.active ? 'page' : undefined} className={`rounded-lg border border-slate-300 px-3 py-2 text-sm ${link.active ? 'border-brand-500 bg-brand-50 text-brand-700' : 'bg-white'}`} dangerouslySetInnerHTML={{ __html: link.label }} /> : <span key={index} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-400" dangerouslySetInnerHTML={{ __html: link.label }} />)}</nav>
     </DashboardLayout>;
 }

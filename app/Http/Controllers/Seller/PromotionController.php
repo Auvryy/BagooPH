@@ -23,7 +23,11 @@ class PromotionController extends Controller
 
     public function index(Request $request, PromotionPresentation $view)
     {
-        return Inertia::render('Seller/Promotions/Index', [...$view->listing($request->user(), $request), 'baseUrl' => $this->baseUrl($request)]);
+        $event = \App\Models\SaleEvent::open()->orderBy('starts_at')->first();
+
+        return Inertia::render('Seller/Promotions/Index', [...$view->listing($request->user(), $request), 'baseUrl' => $this->baseUrl($request),
+            'saleEvent' => $event ? app(\App\Services\Promotions\SaleEventPresenter::class)->summary($event) : null,
+            'saleEventsUrl' => $request->is('seller/*') ? '/seller/sale-events' : '/sale-events']);
     }
 
     public function create(Request $request, PromotionPresentation $view)

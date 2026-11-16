@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
+import { isMousePointer, openMenuOnFirstTap } from '@/utils/touchMenu';
 import BagooLogo from '@/Components/BagooLogo';
 import BagooLogisticsLogo from '@/Components/BagooLogisticsLogo';
 import NotificationLink from '@/Components/NotificationLink';
 import PortalLink from '@/Components/PortalLink';
 import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
 import AdminSidebarNavigation from '@/Components/AdminSidebarNavigation';
+import AdminSectionTabs, { adminAreaTabs } from '@/Components/AdminSectionTabs';
 import LogisticsSidebarNavigation from '@/Components/Logistics/SidebarNavigation';
 import LogisticsNavigationDrawer from '@/Components/Logistics/NavigationDrawer';
 import '../../css/logistics-workspace.css';
@@ -44,6 +46,7 @@ import {
     AlertTriangle, RotateCcw,
     Hash,
     type LucideIcon,
+    CalendarClock,
 } from 'lucide-react';
 
 interface Props {
@@ -76,6 +79,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const user = auth.user;
     const financialReturn = ['Returns/Liability', 'Returns/Liabilities', 'Finance/ShipmentReview', 'Finance/ShipmentOutcome'].includes(component);
     const role = user?.role || 'buyer';
+    const adminArea = role === 'admin' ? adminAreaTabs(component, { returnLiabilities: Boolean(user?.canManageReturnLiabilities), financialReturn }) : null;
+    const accountSubPage = url.split('?')[0].match(/^\/admin\/users\/(\d+)\/(activity|closure|identity-corrections)$/);
     useBodyScrollLock(sidebarOpen && role !== 'logistics');
     const currentShop = user?.shop;
     const activeHub = (user as any)?.activeHub;
@@ -120,23 +125,18 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Users', href: route('admin.users'), icon: Users, current: component.startsWith('Admin/Users') || component === 'Admin/AccountContext' || route().current('admin.users*') || url.startsWith('/admin/users') },
                 { name: 'Review requests', href: route('admin.account-reviews.index'), icon: ShieldCheck, current: component.startsWith('Admin/AccountReview') },
                 { name: 'Products', href: route('admin.products'), icon: Package, current: component.startsWith('Admin/Products') || route().current('admin.products*') || url.startsWith('/admin/products') },
+                { name: 'Sale events', href: route('admin.sale-events.index'), icon: CalendarClock, current: component.startsWith('Admin/SaleEvents/') },
                 { name: 'Voucher campaigns', href: route('admin.vouchers.index'), icon: Tag, current: component.startsWith('Admin/Voucher') },
                 { name: 'Advertisements', href: route('admin.advertisements.index'), icon: ImagePlus, current: component.startsWith('Admin/Advertisements/') },
-                { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
+                { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: adminArea?.label === 'Logistics' || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
                 { name: 'SLA monitoring', href: '/governance/monitoring', icon: AlertTriangle, current: component === 'Governance/Monitoring', attention: Boolean(sidebarAttention?.monitoring), attentionLabel: 'Open SLA or missing-parcel monitoring alerts' },
                 { name: 'Moderation & penalties', href: '/governance/moderation', icon: ShieldCheck, current: component === 'Governance/Moderation', attention: Boolean(sidebarAttention?.moderation), attentionLabel: 'Open sanctions, appeals, or review moderation queue' },
-                { name: 'Shipping settings', href: route('hub.company-setup.index'), icon: Settings, current: component === 'Hub/CompanySetup' },
-                { name: 'Delivery earnings', href: '/delivery-earnings', icon: Banknote, current: component === 'Finance/DeliveryEarnings' },
+                // Finance is one destination; its pages are tabs inside the Finance area.
+                { name: 'Finance', href: '/financial-oversight', icon: Banknote, current: adminArea?.label === 'Finance' },
                 { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component === 'Governance/History' || component === 'Governance/HistoryDetail' },
                 { name: 'Delivery exceptions', href: '/exceptions', icon: ShieldAlert, current: component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' },
                 { name: 'Buyer returns', href: '/buyer-returns', icon: ShieldAlert, current: !financialReturn && component.startsWith('Returns/') },
-                ...(user?.canManageReturnLiabilities ? [{ name: 'Return liabilities', href: '/return-liabilities', icon: Banknote, current: financialReturn }] : []),
                 { name: 'Handover issues', href: '/handover-issues', icon: AlertTriangle, current: component.startsWith('Handover/') },
-                { name: 'COD cash', href: route('admin.cod.index'), icon: Banknote, current: component === 'Finance/Cod' || component === 'Finance/CodDetail' },
-                { name: 'Seller proceeds', href: '/seller-settlements', icon: Banknote, current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
-                { name: 'Wallet credits', href: '/wallet/admin', icon: Banknote, current: component === 'Admin/WalletCredits' },
-                { name: 'Virtual proceeds', href: '/wallet/proceeds', icon: Banknote, current: component === 'Finance/WalletProceeds' },
-                { name: 'Financial oversight', href: '/financial-oversight', icon: Banknote, current: component === 'Finance/Overview' || component === 'Finance/Evidence' },
                 ...(user?.canManageResources && user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component === 'Governance/Resources' || component === 'Governance/ResourceRestriction' }] : []),
             ];
         }
@@ -170,6 +170,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: Tag, 
                     current: component.startsWith('Seller/Voucher') || route().current('seller.vouchers.*') || url.startsWith('/seller/vouchers') 
                 },
+                { name: 'Sale events', href: route('seller.sale-events.index'), icon: CalendarClock, current: component.startsWith('Seller/SaleEvents/') },
                 { name: 'Promotions', href: route('seller.promotions.index'), icon: ImagePlus, current: component.startsWith('Seller/Promotions/') },
                 { 
                     name: 'Messages', 
@@ -563,7 +564,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <span>{activeHub?.name || logisticsCompany?.name || 'Logistics'}</span>
                                     </span>
                                     <span className="hidden sm:inline text-ink-400" aria-hidden="true">/</span>
-                                    <p className="truncate text-sm font-semibold text-ink-900">{title}</p>
+                                    {/* Phones show the page's own large title below; skip the cut-off copy here. */}
+                                    <p className="hidden truncate text-sm font-semibold text-ink-900 sm:block">{title}</p>
                                 </div>
                             ) : (
                                 <>
@@ -582,11 +584,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         {/* Merchant / Admin User Avatar Interactive Dropdown */}
                         <div 
                             className="relative"
-                            onMouseEnter={handleUserMenuEnter}
-                            onMouseLeave={handleUserMenuLeave}
+                            onPointerEnter={event => { if (isMousePointer(event)) handleUserMenuEnter(); }}
+                            onPointerLeave={event => { if (isMousePointer(event)) handleUserMenuLeave(); }}
                         >
                             <Link
                                 href={role === 'seller' ? route('seller.profile') : route('profile.edit')}
+                                onClick={event => openMenuOnFirstTap(event, userMenuOpen, setUserMenuOpen)}
+                                aria-haspopup="menu" aria-expanded={userMenuOpen}
                                 className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-zinc-100/80 transition group focus:outline-hidden border border-transparent hover:border-zinc-200/80"
                             >
                                 {user?.avatar ? (
@@ -615,8 +619,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             {userMenuOpen && (
                                 <div 
                                     className="absolute right-0 top-full -mt-0.5 pt-1 w-56 z-50 animate-scale-in"
-                                    onMouseEnter={handleUserMenuEnter}
-                                    onMouseLeave={handleUserMenuLeave}
+                                    onPointerEnter={event => { if (isMousePointer(event)) handleUserMenuEnter(); }}
+                                    onPointerLeave={event => { if (isMousePointer(event)) handleUserMenuLeave(); }}
                                 >
                                     <div className="bg-white rounded-xl shadow-xl border border-zinc-200/90 py-1.5 text-zinc-800 font-sans">
                                         <div className="px-4 py-2.5 border-b border-zinc-100 font-sans text-xs flex items-center gap-2.5">
@@ -751,6 +755,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 {/* Body Content */}
                 <main className={`flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 ${lx ? 'bg-surface-50' : 'bg-[#F8FAFC]'}`} id="portal-main">
                     <div className="max-w-7xl mx-auto space-y-6">
+                        {adminArea && <AdminSectionTabs label={adminArea.label} tabs={adminArea.tabs} />}
+                        {/* Account sub-pages (activity, closure, identity corrections) always lead back to the account and the list. */}
+                        {role === 'admin' && accountSubPage && <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[13px] text-ink-600">
+                            <PortalLink href="/admin/users" className="font-medium text-ink-700 underline underline-offset-2 hover:text-ink-900">Users</PortalLink>
+                            <span aria-hidden="true">/</span>
+                            <PortalLink href={`/admin/users/${accountSubPage[1]}/context`} className="font-medium text-ink-700 underline underline-offset-2 hover:text-ink-900">Account</PortalLink>
+                        </nav>}
                         {sharedHubHeading && <HubPageHeader title={title} description={subtitle} icon={hubPageIcon} />}
                         {children}
                     </div>

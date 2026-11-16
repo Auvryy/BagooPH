@@ -9,7 +9,6 @@ use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
-use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\MotherBag;
@@ -37,7 +36,7 @@ class LogisticsTestingEnvironmentSeeder extends Seeder
             if ($postgres) {
                 DB::statement("SET session_replication_role = 'replica'");
             }
-            
+
             PickupClaim::query()->delete();
             DeliveryAttempt::query()->delete();
             DeliveryCheckpoint::query()->delete();
@@ -194,8 +193,10 @@ class LogisticsTestingEnvironmentSeeder extends Seeder
                 'province' => 'Laguna',
                 'city_municipality' => 'Los Banos',
                 'postal_codes' => ['4030'],
-                'operating_hours' => 'Monday to Saturday, 8 AM to 6 PM',
             ]);
+            // Opening hours are set once; an admin's later change survives a reseed.
+            $losBanosHub->operating_hours ??= 'Monday to Saturday, 8 AM to 6 PM';
+            $losBanosHub->save();
 
             // Regional Mother Hub: Laguna Regional DC (MH-LAG-01)
             $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
@@ -203,8 +204,10 @@ class LogisticsTestingEnvironmentSeeder extends Seeder
                 'is_active' => true,
                 'province' => 'Laguna',
                 'city_municipality' => 'Calamba City',
-                'operating_hours' => '24/7 Trunkline Logistics Operations',
             ]);
+            // Opening hours are set once; an admin's later change survives a reseed.
+            $motherHub->operating_hours ??= '24/7 Trunkline Logistics Operations';
+            $motherHub->save();
 
             // Destination Bayan Hub: Santa Cruz (BH-SCZ-01)
             $santaCruzHub = LogisticsHub::where('code', 'BH-SCZ-01')->firstOrFail();
@@ -214,8 +217,10 @@ class LogisticsTestingEnvironmentSeeder extends Seeder
                 'city_municipality' => 'Santa Cruz',
                 'postal_codes' => ['4009'],
                 'allows_self_pickup' => true,
-                'operating_hours' => 'Monday to Saturday, 8 AM to 6 PM',
             ]);
+            // Opening hours are set once; an admin's later change survives a reseed.
+            $santaCruzHub->operating_hours ??= 'Monday to Saturday, 8 AM to 6 PM';
+            $santaCruzHub->save();
 
             // Link parent hubs for proper linehaul routing
             $losBanosHub->update(['parent_hub_id' => $motherHub->id]);

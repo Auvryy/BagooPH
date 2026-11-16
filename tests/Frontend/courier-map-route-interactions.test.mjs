@@ -28,24 +28,7 @@ function harness(t){
  Object.defineProperty(globalThis,'document',{configurable:true,value:h.document});Object.defineProperty(globalThis,'window',{configurable:true,value:{matchMedia:()=>({matches:false})}});Object.defineProperty(globalThis,'navigator',{configurable:true,value:{geolocation:{getCurrentPosition(resolve,reject){h.locate=resolve;h.reject=reject}}}});Object.defineProperty(globalThis,'fetch',{configurable:true,value:(...args)=>{h.calls.push(args);throw new Error('A sample map must not request a routing API')}});globalThis.mapRoute=h;
  t.after(()=>{h.close();delete globalThis.mapRoute;for(const[name,value]of Object.entries(original)){if(value)Object.defineProperty(globalThis,name,value);else delete globalThis[name]}});return h;
 }
-test('sample delivery draws its line without requesting location or a routing service', async t => {
- const h=harness(t);h.props={};h.render();await tick();h.render();await tick();
- assert.equal(h.calls.length,0);assert.equal(h.locate,undefined);
- assert.equal(h.lines.length,2);assert.equal(h.lines[1].options.color,'#E00D42');
- assert.equal(h.lines[1].options.dashArray,undefined);assert.equal(h.lines[1].options.smoothFactor,0);assert.ok(h.lines[1].points.length>2);
- assert.match(text(h.tree),/m along mapped streets/);
- assert.match(text(h.tree),/Illustration only/);assert.match(text(h.tree),/Sample rider/);
- assert.doesNotMatch(text(h.tree),/Origin hub|Geoapify|Preview road route/);
-});
-test('switching between a saved stop and the sample replaces and releases its map',async t=>{
- const h=harness(t);let removed=0;h.instance.remove=()=>{removed++;h.lines=[]};
- h.render();await tick();h.render();assert.equal(h.lines.length,0);
- h.button('Try sample route').props.onClick();h.render();await tick();h.render();
- assert.equal(h.lines.length,2);assert.equal(removed,1);
- h.button('Show saved stop').props.onClick();h.render();await tick();h.render();
- assert.equal(h.lines.length,0);assert.equal(removed,2);assert.equal(h.locate,undefined);
- h.close();assert.equal(removed,3);
-});
+// The sample route demo was removed from the rider map; only real, verified routes are drawn.
 test('verified road geometry is drawn for the assigned stop',async t=>{
  const h=harness(t);h.road={active:true,lines:[[[14.15,121.2],[14.17,121.24]]],origin:[14.15,121.2],mode:'drive',message:'Road route ready.',configured:true,start(){},stop(){},setMode(){}};
  h.render();await tick();h.render();await tick();

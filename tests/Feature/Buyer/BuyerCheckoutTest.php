@@ -78,8 +78,8 @@ class BuyerCheckoutTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Checkout/Index')
             ->where('subtotal', 500)
-            ->where('shippingFee', 60)
-            ->where('total', 560)
+            ->where('shippingFee', 50)
+            ->where('total', 550)
         );
     }
 

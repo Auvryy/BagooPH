@@ -156,7 +156,7 @@ test('seller listing drafts persist on device when a drawer closes and recover w
         const h = harness(Listings, { products: { data: [], current_page: 1, total: 0, last_page: 1 }, categories: [], shop: { id: 5, name: 'Bagoo Studio', root_category_id: 12 } });
         let tree = h.render(); nodes(tree, node => node.type === 'button' && text(node).includes('List New Product'))[0].props.onClick();
         tree = h.render(); h.forms[0].data.name = 'Recovery Canvas Tote'; h.forms[0].isDirty = true; tree = h.render();
-        nodes(tree, node => node.type === 'button' && node.props.title === 'Close sidebar')[0].props.onClick();
+        nodes(tree, node => node.type === 'button' && node.props.title === 'Close')[0].props.onClick();
         const key = 'bagoo:seller-product-draft:v1:5:create';
         assert.equal(JSON.parse(values.get(key)).draft.form.name, 'Recovery Canvas Tote');
 
@@ -181,7 +181,7 @@ test('seller edits flush to device storage on close and restore when the edit dr
         const h = harness(Listings, { products: { data: [product], current_page: 1, total: 1, last_page: 1 }, categories: [], shop: { id: 5, name: 'Bagoo Studio', root_category_id: 12 } });
         let tree = h.render(); nodes(tree, node => node.type === 'button' && node.props.title === 'Edit Product')[0].props.onClick();
         tree = h.render(); h.forms[1].data.name = 'Recovered Edited Carrier'; h.forms[1].isDirty = true; tree = h.render();
-        nodes(tree, node => node.type === 'button' && node.props.title === 'Close sidebar')[0].props.onClick();
+        nodes(tree, node => node.type === 'button' && node.props.title === 'Close')[0].props.onClick();
         const key = 'bagoo:seller-product-draft:v1:5:product:9';
         assert.equal(JSON.parse(values.get(key)).draft.form.name, 'Recovered Edited Carrier');
 

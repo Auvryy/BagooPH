@@ -291,6 +291,10 @@ class EnforcementAndPenaltyTest extends TestCase
         $admin = $this->createApprovedUser('admin');
         $this->actingAs($admin);
 
+        // The moderation page opens and lists the breached pickup clock.
+        $this->get('/governance/moderation')->assertOk()->assertInertia(fn ($page) => $page
+            ->where('breachedSlaClocks.0.id', $clock->id)->where('breachedSlaClocks.0.clock_kind', 'pickup_handoff'));
+
         // 1. Last scan alone never establishes fault or justifies a penalty.
         $this->postJson(route('governance.moderation.sla-clocks.propose-penalty', $clock), [
             'evidence_basis' => 'last_scan_only',

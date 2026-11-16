@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Buyer;
 use App\Exceptions\CheckoutException;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
-use App\Models\LogisticsHub;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
@@ -170,7 +169,8 @@ class CheckoutController extends Controller
                     : route('buyer.profile', ['tab' => 'orders', 'order_status' => 'to_pay']))
                 : route('buyer.orders.index');
 
-            if ($request->expectsJson()) {
+            // Only the website checkout asks for JSON; the buyer app sends a background request and follows the page redirect.
+            if ($request->wantsJson()) {
                 session()->flash('success', $message);
 
                 return response()->json([
@@ -190,12 +190,12 @@ class CheckoutController extends Controller
         } catch (ValidationException|AuthorizationException $e) {
             throw $e;
         } catch (HttpExceptionInterface $e) {
-            if ($e->getStatusCode() === 409 && ! $request->expectsJson()) {
+            if ($e->getStatusCode() === 409 && ! $request->wantsJson()) {
                 return redirect()->route('buyer.orders.index')->with('error', $e->getMessage());
             }
             throw $e;
         } catch (CheckoutException $e) {
-            if ($request->expectsJson()) {
+            if ($request->wantsJson()) {
                 return response()->json(['message' => $e->getMessage()], 422);
             }
 

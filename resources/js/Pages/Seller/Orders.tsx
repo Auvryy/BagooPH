@@ -474,7 +474,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 type="button"
                                 onClick={handleBatchSchedulePickup}
                                 disabled={isSubmitting || !shopEligible}
-                                className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer font-sans"
+                                className="px-3 py-1.5 border border-line-300 bg-white hover:bg-surface-100 text-ink-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer font-sans"
                             >
                                 <Truck className="w-3.5 h-3.5" />
                                 <span>Mark ready ({selectedOrderIds.length})</span>
@@ -737,7 +737,8 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                             )}
                                         </div>
                                     </div>
-                                    {item.order.fulfillment_feedback && <p role="status" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-[#9F1239]">{item.order.fulfillment_feedback.message}</p>}
+                                    {/* Closed orders get a neutral note; only blocked work is shown as a warning. */}
+                                    {item.order.fulfillment_feedback && <p role="status" className={`mt-3 rounded-lg px-3 py-2 text-sm ${['completed', 'cancelled', 'returned'].includes(item.order.fulfillment_feedback.code) ? 'bg-surface-100 text-ink-700' : 'bg-rose-50 text-[#9F1239]'}`}>{item.order.fulfillment_feedback.message}</p>}
                                     {(item.order.cancellation_request || orderStatus === 'cancelled') && <div className="mt-3 space-y-3">
                                         <OrderCancellationFeedback feedback={item.order.cancellation_feedback} />
                                         {item.order.cancellation_request && <OrderCancellationReview key={`${item.order.cancellation_request.id}:${item.order.cancellation_request.version}`} request={item.order.cancellation_request} disabled={isSubmitting || trackingRefreshing} />}

@@ -105,21 +105,21 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
 });
 
 Route::prefix('v1/logistics')->middleware(PrivateRiderResponse::class)->group(function () {
-    Route::post('auth/tokens', [LogisticsAuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('auth/tokens', [LogisticsAuthController::class, 'login'])->middleware('throttle:logistics-login');
     Route::post('activation/send', [StaffInvitationController::class, 'send'])->middleware('throttle:5,1');
     Route::post('activation/verify', [StaffInvitationController::class, 'verify'])->middleware('throttle:10,1');
     Route::post('activation/complete', [StaffInvitationController::class, 'activate'])->middleware('throttle:5,1');
     Route::get('session', [LogisticsAuthController::class, 'me'])->middleware(EnsureLogisticsAccountToken::class.':account');
     Route::delete('auth/token', [LogisticsAuthController::class, 'logout'])->middleware(EnsureLogisticsAccountToken::class.':logout');
-    Route::post('scan', [LogisticsScanController::class, 'scan'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:120,1']);
-    Route::post('scan/batch', [LogisticsScanController::class, 'batch'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:60,1']);
-    Route::get('mother-bags', [LogisticsMotherBagController::class, 'index'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:60,1']);
-    Route::post('mother-bags', [LogisticsMotherBagController::class, 'store'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:30,1']);
-    Route::get('mother-bags/{bag}', [LogisticsMotherBagController::class, 'show'])->whereUuid('bag')->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:60,1']);
+    Route::post('scan', [LogisticsScanController::class, 'scan'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:logistics-120']);
+    Route::post('scan/batch', [LogisticsScanController::class, 'batch'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:logistics-60']);
+    Route::get('mother-bags', [LogisticsMotherBagController::class, 'index'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:logistics-60']);
+    Route::post('mother-bags', [LogisticsMotherBagController::class, 'store'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:logistics-30']);
+    Route::get('mother-bags/{bag}', [LogisticsMotherBagController::class, 'show'])->whereUuid('bag')->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:logistics-60']);
     Route::post('mother-bags/{bag}/dispatch', [LogisticsMotherBagController::class, 'dispatch'])->whereUuid('bag')
-        ->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:30,1']);
+        ->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:logistics-30']);
     Route::post('mother-bags/{bag}/{action}', [LogisticsMotherBagController::class, 'command'])
         ->whereUuid('bag')
         ->where('action', 'add|remove|seal|reopen|load|unload|open')
-        ->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:120,1']);
+        ->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:logistics-120']);
 });

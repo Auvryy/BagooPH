@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminKycController;
 use App\Http\Controllers\Admin\AdminShopReviewController;
 use App\Http\Controllers\Admin\AdvertisementController as AdminAdvertisementController;
+use App\Http\Controllers\Admin\SaleEventController as AdminSaleEventController;
 use App\Http\Controllers\Admin\LogisticsHubController;
 use App\Http\Controllers\Admin\ProductModerationController;
 use App\Http\Controllers\Admin\VoucherCampaignController;
@@ -80,6 +81,7 @@ use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\RegistrationPolicyController;
 use App\Http\Controllers\Seller\ProductSaleController;
 use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
+use App\Http\Controllers\Seller\SaleEventController as SellerSaleEventController;
 use App\Http\Controllers\Seller\SellerAiAssistantController;
 use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Controllers\Seller\SellerDisputeController;
@@ -333,6 +335,14 @@ $registerSellerRoutes = function () {
         Route::get('/vouchers/{voucher}', [SellerVoucherController::class, 'show']);
         Route::patch('/vouchers/{voucher}', [SellerVoucherController::class, 'update']);
         Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action']);
+        Route::prefix('sale-events')->group(function () {
+            Route::get('/', [SellerSaleEventController::class, 'index']);
+            Route::get('/{event}', [SellerSaleEventController::class, 'show'])->whereNumber('event');
+            Route::post('/{event}/products', [SellerSaleEventController::class, 'addProducts'])->whereNumber('event');
+            Route::delete('/{event}/products/{sale}', [SellerSaleEventController::class, 'removeProduct'])->whereNumber(['event', 'sale']);
+            Route::post('/{event}/vouchers', [SellerSaleEventController::class, 'addVoucher'])->whereNumber('event');
+            Route::delete('/{event}/vouchers/{entry}', [SellerSaleEventController::class, 'removeVoucher'])->whereNumber(['event', 'entry']);
+        });
         Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy']);
         Route::prefix('promotions')->middleware(AdvertisementResponseHeaders::class)->group(function () {
             Route::get('/performance', [SellerPromotionController::class, 'report']);
@@ -537,6 +547,17 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes, $reg
         Route::get('/vouchers/{voucher}', [VoucherCampaignController::class, 'show']);
         Route::patch('/vouchers/{voucher}', [VoucherCampaignController::class, 'update']);
         Route::post('/vouchers/{voucher}/actions', [VoucherCampaignController::class, 'action']);
+        Route::prefix('sale-events')->group(function () {
+            Route::get('/', [AdminSaleEventController::class, 'index']);
+            Route::get('/create', [AdminSaleEventController::class, 'create']);
+            Route::post('/', [AdminSaleEventController::class, 'store']);
+            Route::get('/{event}', [AdminSaleEventController::class, 'show'])->whereNumber('event');
+            Route::post('/{event}', [AdminSaleEventController::class, 'update'])->whereNumber('event');
+            Route::post('/{event}/end', [AdminSaleEventController::class, 'end'])->whereNumber('event');
+            Route::post('/{event}/vouchers', [AdminSaleEventController::class, 'addVoucher'])->whereNumber('event');
+            Route::delete('/{event}/vouchers/{entry}', [AdminSaleEventController::class, 'removeVoucher'])->whereNumber(['event', 'entry']);
+            Route::delete('/{event}/products/{sale}', [AdminSaleEventController::class, 'removeProduct'])->whereNumber(['event', 'sale']);
+        });
         Route::prefix('advertisements')->middleware(AdvertisementResponseHeaders::class)->group(function () {
             Route::get('/performance', [AdminAdvertisementController::class, 'report']);
             Route::get('/', [AdminAdvertisementController::class, 'index']);
@@ -616,6 +637,10 @@ Route::get('/', [BuyerHomeController::class, 'index'])->middleware(Advertisement
 Route::get('/marketplace', [BuyerHomeController::class, 'index'])->middleware(AdvertisementResponseHeaders::class);
 Route::get('/top-products', [BuyerHomeController::class, 'topProducts'])->middleware(AdvertisementResponseHeaders::class)->name('top-products');
 Route::get('/campaign/{event}', [BuyerCampaignController::class, 'show'])->middleware(AdvertisementResponseHeaders::class)->name('buyer.campaign.show');
+Route::middleware('auth')->group(function () {
+    Route::post('/campaign/vouchers/{entry}/claim', [BuyerCampaignController::class, 'claim'])->whereNumber('entry')->middleware('throttle:60,1')->name('buyer.campaign.claim');
+    Route::post('/campaign/{event}/claim-all', [BuyerCampaignController::class, 'claimAll'])->whereNumber('event')->middleware('throttle:20,1')->name('buyer.campaign.claim-all');
+});
 Route::middleware(AdvertisementResponseHeaders::class)->group(function () {
     Route::get('/advertisement-artwork/{token}', [BuyerAdvertisementController::class, 'artwork'])->whereUuid('token')->name('advertisements.artwork');
     Route::post('/advertisement-events', [BuyerAdvertisementController::class, 'event'])->middleware('throttle:advertisement-events')->name('advertisements.events');
@@ -860,6 +885,14 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::get('/vouchers/{voucher}', [SellerVoucherController::class, 'show'])->name('vouchers.show');
     Route::patch('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->name('vouchers.update');
     Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action'])->name('vouchers.action');
+    Route::prefix('sale-events')->name('sale-events.')->group(function () {
+        Route::get('/', [SellerSaleEventController::class, 'index'])->name('index');
+        Route::get('/{event}', [SellerSaleEventController::class, 'show'])->whereNumber('event')->name('show');
+        Route::post('/{event}/products', [SellerSaleEventController::class, 'addProducts'])->whereNumber('event')->name('products.store');
+        Route::delete('/{event}/products/{sale}', [SellerSaleEventController::class, 'removeProduct'])->whereNumber(['event', 'sale'])->name('products.destroy');
+        Route::post('/{event}/vouchers', [SellerSaleEventController::class, 'addVoucher'])->whereNumber('event')->name('vouchers.store');
+        Route::delete('/{event}/vouchers/{entry}', [SellerSaleEventController::class, 'removeVoucher'])->whereNumber(['event', 'entry'])->name('vouchers.destroy');
+    });
     Route::prefix('promotions')->name('promotions.')->middleware(AdvertisementResponseHeaders::class)->group(function () {
         Route::get('/performance', [SellerPromotionController::class, 'report'])->name('performance');
         Route::get('/', [SellerPromotionController::class, 'index'])->name('index');
@@ -951,6 +984,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/vouchers/{voucher}', [VoucherCampaignController::class, 'show'])->name('vouchers.show');
     Route::patch('/vouchers/{voucher}', [VoucherCampaignController::class, 'update'])->name('vouchers.update');
     Route::post('/vouchers/{voucher}/actions', [VoucherCampaignController::class, 'action'])->name('vouchers.action');
+    Route::prefix('sale-events')->name('sale-events.')->group(function () {
+        Route::get('/', [AdminSaleEventController::class, 'index'])->name('index');
+        Route::get('/create', [AdminSaleEventController::class, 'create'])->name('create');
+        Route::post('/', [AdminSaleEventController::class, 'store'])->name('store');
+        Route::get('/{event}', [AdminSaleEventController::class, 'show'])->whereNumber('event')->name('show');
+        Route::post('/{event}', [AdminSaleEventController::class, 'update'])->whereNumber('event')->name('update');
+        Route::post('/{event}/end', [AdminSaleEventController::class, 'end'])->whereNumber('event')->name('end');
+        Route::post('/{event}/vouchers', [AdminSaleEventController::class, 'addVoucher'])->whereNumber('event')->name('vouchers.store');
+        Route::delete('/{event}/vouchers/{entry}', [AdminSaleEventController::class, 'removeVoucher'])->whereNumber(['event', 'entry'])->name('vouchers.destroy');
+        Route::delete('/{event}/products/{sale}', [AdminSaleEventController::class, 'removeProduct'])->whereNumber(['event', 'sale'])->name('products.destroy');
+    });
     Route::prefix('advertisements')->name('advertisements.')->middleware(AdvertisementResponseHeaders::class)->group(function () {
         Route::get('/performance', [AdminAdvertisementController::class, 'report'])->name('performance');
         Route::get('/', [AdminAdvertisementController::class, 'index'])->name('index');

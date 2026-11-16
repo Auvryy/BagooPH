@@ -83,7 +83,7 @@ class ExceptionJourneyAcceptanceTest extends TestCase
         $deliveryInput = $this->codCollectionInput($parcel) + ['status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('retry-handover.jpg')];
         $this->patch(route('courier.updateStatus', $parcel), $deliveryInput)->assertSessionHas('success');
         $cash = CodAccount::sole();
-        $this->assertSame([90000, 6000, 0, 96000], [$cash->product_subtotal_cents, $cash->shipping_cents, $cash->discount_cents, $cash->expected_cents]);
+        $this->assertSame([90000, 5000, 0, 95000], [$cash->product_subtotal_cents, $cash->shipping_cents, $cash->discount_cents, $cash->expected_cents]);
         $this->assertSame($rider->id, $cash->collector_id);
         $this->assertSame($cash->expected_cents, $cash->state['balances']['rider:'.$rider->id]);
         $this->assertSame('delivered', $parcel->order->fresh()->status);

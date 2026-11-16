@@ -48,7 +48,7 @@ class DeliveryPhoneConsistencyTest extends TestCase
 
         $product = Product::create([
             'shop_id' => $shop->id,
-            'category_id' => $category->id,
+            'category_id' => $shop->root_category_id, 'weight_kg' => 0.5, 'length_cm' => 20, 'width_cm' => 15, 'height_cm' => 10,
             'name' => 'Classic Tee',
             'slug' => 'classic-tee',
             'price' => 500.00,
@@ -136,7 +136,7 @@ class DeliveryPhoneConsistencyTest extends TestCase
 
         $product = Product::create([
             'shop_id' => $shop->id,
-            'category_id' => $category->id,
+            'category_id' => $shop->root_category_id, 'weight_kg' => 0.5, 'length_cm' => 20, 'width_cm' => 15, 'height_cm' => 10,
             'name' => 'Smart Watch',
             'slug' => 'smart-watch',
             'price' => 1000.00,

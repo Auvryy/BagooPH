@@ -333,8 +333,8 @@ class CrossFeatureCombinationsTest extends TestCase
         $order = $this->checkoutFlowOrders($buyer, [['product' => $product]], ['voucher_code' => $voucher->code])->first();
         $this->assertEquals(149.99, $order->subtotal);
         $this->assertEquals(50, $order->voucher_discount);
-        $this->assertSame('60.00', $order->shipping_fee);
-        $this->assertSame('159.99', $order->total_amount);
+        $this->assertSame('50.00', $order->shipping_fee);
+        $this->assertSame('149.99', $order->total_amount);
         $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
         $this->settleFlowOrder($order);
@@ -363,7 +363,8 @@ class CrossFeatureCombinationsTest extends TestCase
         $this->assertSame('cancelled', $order->fresh()->status);
         $this->assertSame(5, $product->fresh()->stock);
         $before = $order->fresh()->getRawOriginal();
-        $this->actingAs($shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('error');
+        // A repeated cancel is a safe retry: no error and nothing changes.
+        $this->actingAs($shop->user)->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHasNoErrors();
         $this->assertSame($before, $order->fresh()->getRawOriginal());
         $this->assertSame(5, $product->fresh()->stock);
     }

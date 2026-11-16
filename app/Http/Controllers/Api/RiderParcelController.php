@@ -50,7 +50,8 @@ class RiderParcelController extends Controller
             $rules['proof_image_file'] = ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'];
         }
         if ($action === 'deliver') {
-            $rules += ['recipient_name' => ['required', 'string', new ApplicationText('name', 2, 255)],
+            // A direct handover to the buyer may leave the name empty (the order's recipient is used); others must name the person.
+            $rules += ['recipient_name' => [Rule::requiredIf($request->input('recipient_relationship') !== 'buyer'), 'nullable', 'string', new ApplicationText('name', 2, 255)],
                 'recipient_relationship' => ['required', Rule::in(['buyer', 'household', 'authorized_recipient'])],
                 'cash_received' => ['nullable', 'string', 'regex:'.CodMoney::RULE],
                 'change_given' => ['nullable', 'string', 'regex:'.CodMoney::RULE], 'cash_confirmed' => ['nullable', 'boolean']];
@@ -76,6 +77,9 @@ class RiderParcelController extends Controller
                 $this->tasks->assertVersion($parcel, $input['expected_version']);
                 $evidence = array_diff_key($input, array_flip(['expected_version', 'proof_image_file']));
                 $evidence['request_token'] = $request->header('Idempotency-Key');
+                if ($action === 'deliver' && blank($evidence['recipient_name'] ?? null)) {
+                    $evidence['recipient_name'] = $parcel->order->recipient_name ?: $parcel->order->buyer?->name;
+                }
                 if (isset($input['proof_image_file'])) {
                     $path = $this->proofs->store($input['proof_image_file'], $action === 'fail');
                     $evidence[$action === 'fail' ? 'proof_path' : 'proof_image'] = $path;

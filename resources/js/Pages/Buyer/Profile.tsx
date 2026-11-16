@@ -472,7 +472,7 @@ export default function BuyerProfile({
                     <h1 className="sr-only">{activeTab === 'orders' ? (showingOrderIssues ? 'Order issues' : 'My Purchases & Order Tracking') : 'Account Settings & Credentials'}</h1>
                     
                     {/* LEFT SIDEBAR NAVIGATION */}
-                    <div data-buyer-profile-scroll scroll-region="" className="buyer-profile-sidebar lg:col-span-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-5">
+                    <div data-buyer-profile-scroll scroll-region="" className={`buyer-profile-sidebar lg:col-span-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-5 ${activeTab === 'orders' ? 'order-2 lg:order-none' : ''}`}>
                         
                         {/* User Identity Mini Card */}
                         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3.5">
@@ -603,7 +603,8 @@ export default function BuyerProfile({
                     </div>
 
                     {/* RIGHT CONTENT WORKSPACE */}
-                    <div className="buyer-profile-content min-w-0 lg:col-span-8">
+                    {/* On phones the orders come first; the account menu follows below them. */}
+                    <div className={`buyer-profile-content min-w-0 lg:col-span-8 ${activeTab === 'orders' ? 'order-1 lg:order-none' : ''}`}>
                         
                         {/* TAB 1: MY PURCHASES & ORDERS (DEFAULT ACTIVE TAB) */}
                         {activeTab === 'orders' && (
@@ -1022,7 +1023,7 @@ export default function BuyerProfile({
                                             <button
                                                 type="submit"
                                                 disabled={passwordForm.processing}
-                                                className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white font-sans text-xs font-bold uppercase rounded-xl transition shadow-xs"
+                                                className="px-6 py-2.5 border border-line-300 bg-white hover:bg-surface-100 text-ink-900 font-sans text-xs font-bold uppercase rounded-xl transition shadow-xs"
                                             >
                                                 {passwordForm.processing ? 'Updating...' : 'Update Password'}
                                             </button>

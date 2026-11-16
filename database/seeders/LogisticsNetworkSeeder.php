@@ -148,6 +148,12 @@ class LogisticsNetworkSeeder extends Seeder
         $losBanosHub->update(['parent_hub_id' => $motherHub->id, 'postal_codes' => ['4030']]);
         $santaCruzHub->update(['parent_hub_id' => $motherHub->id, 'postal_codes' => ['4009']]);
         $this->assignHandler($motherHubHandler, $motherHub, 'Mother Hub Sortation Operator');
+        // The company owner only monitors and never handles cargo, so the mother hub needs its own floor worker.
+        $motherHubFloor = $this->logisticsUser('motherhub.floor@bagoo.test', 'Laguna Mother Hub Floor Worker', '+63 917 000 0012',
+            'Laguna Regional Mother Hub', 'Calamba City, Laguna', '4027');
+        HubHandler::updateOrCreate(['user_id' => $motherHubFloor->id, 'hub_id' => $motherHub->id], [
+            'logistics_company_id' => $company->id, 'job_role' => HubHandler::JOB_ROLE_ALL,
+            'role_title' => HubHandler::roleTitleFor(HubHandler::JOB_ROLE_ALL), 'is_active' => true]);
         $this->assignHandler($santaCruzHandler, $santaCruzHub, 'Bayan Hub Operations Handler');
 
         $pickupMotorcycle = LogisticsFleet::updateOrCreate(

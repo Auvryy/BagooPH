@@ -85,12 +85,15 @@ class DeliveryCompletionEvidenceTest extends TestCase
         $order = $this->purchase($payment, $counter);
         $parcel = $counter ? $this->counter($order) : $this->flowDelivery($order, 'delivered');
         $order->refresh();
-        $this->assertSame($counter ? 26900 : 33900, CodMoney::cents($order->total_amount));
+        // Doorstep pays the full PHP 70 tariff (1.9 kg); hub self-pickup pays the reduced self-pickup fee.
+        $shipping = CodMoney::cents($order->shipping_fee);
+        $counter ? $this->assertTrue($shipping > 0 && $shipping < 7000) : $this->assertSame(7000, $shipping);
+        $this->assertSame(26900 + $shipping, CodMoney::cents($order->total_amount));
         $this->assertSame('completed', $order->status);
         $this->assertSame('paid', $order->payment_status);
         $entries = LogisticsEarning::where('delivery_id', $parcel->id)->get();
         $this->assertSame(26900, $entries->where('pool', 'products')->sum('amount_cents'));
-        $this->assertSame($counter ? 0 : 7000, $entries->where('pool', 'shipping')->sum('amount_cents'));
+        $this->assertSame($shipping, $entries->where('pool', 'shipping')->sum('amount_cents'));
         $proof = $parcel->checkpoints()->whereIn('checkpoint_type', ['delivered', 'customer_collected'])->sole();
         $counts = [$parcel->checkpoints()->count(), LogisticsEarning::count(), DB::table('logistics_earning_events')->count(), CodAccount::count(), WalletEntry::count()];
         app(AutomaticDeliveryCompletionService::class)->complete($parcel, $proof, User::findOrFail($proof->scanned_by_id));

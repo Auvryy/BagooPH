@@ -144,11 +144,12 @@ class BuyerPolishBoundaryTest extends TestCase
 
     public static function shippingThreshold(): array
     {
-        return [['1499.99', 5000], ['1500.00', 5000], ['1500.01', 0]];
+        // Free shipping comes only from vouchers now; the order value never waives the tariff.
+        return [['1499.99', 5000], ['1500.00', 5000], ['1500.01', 5000]];
     }
 
     #[DataProvider('shippingThreshold')]
-    public function test_doorstep_shipping_threshold_is_strictly_above_fifteen_hundred(string $price, int $shipping): void
+    public function test_doorstep_shipping_does_not_depend_on_order_value(string $price, int $shipping): void
     {
         [, , , , $payload] = $this->checkout($price);
         $this->postJson('/buyer/vouchers/apply', $payload)->assertOk()->assertJsonPath('quote.shipping_fee', $shipping / 100);
@@ -163,14 +164,16 @@ class BuyerPolishBoundaryTest extends TestCase
     }
 
     #[DataProvider('productWeights')]
-    public function test_actual_product_weight_does_not_manufacture_an_unsupported_shipping_tariff(string $weight): void
+    public function test_actual_product_weight_sets_the_weight_based_default_tariff(string $weight): void
     {
         [$buyer, , $product, $cart, $payload] = $this->checkout('100.00');
         $product->update(['weight_kg' => $weight]);
         $payload['checkout_token'] = app(CheckoutSubmissionService::class)->issue($buyer, $cart);
-        $this->postJson('/buyer/vouchers/apply', $payload)->assertOk()->assertJsonPath('quote.shipping_fee', 50);
+        // Weight-based default tariff: PHP 50 covers the first kilogram, then PHP 20 per started extra kilogram.
+        $expected = 5000 + max(0, (int) ceil((float) $weight - 1)) * 2000;
+        $this->postJson('/buyer/vouchers/apply', $payload)->assertOk()->assertJsonPath('quote.shipping_fee', $expected / 100);
         $this->post('/checkout', $payload)->assertSessionHas('success');
-        $this->assertSame(5000, CodMoney::cents(Order::sole()->shipping_fee));
+        $this->assertSame($expected, CodMoney::cents(Order::sole()->shipping_fee));
     }
 
     #[DataProvider('noteLengths')]
@@ -186,8 +189,12 @@ class BuyerPolishBoundaryTest extends TestCase
 
             return;
         }
-        $response->assertRedirect()->assertSessionHas('success');
+        // A JSON checkout answers with the page to open next instead of an HTTP redirect.
+        $response->assertOk()->assertJsonPath('success', true)->assertJsonStructure(['redirect']);
         $this->assertSame($note, Order::sole()->notes);
+        // Recipient details, notes included, are disclosed to the seller once the order is confirmed.
+        $this->actingAs($shop->user)->get('/seller/orders')->assertOk()->assertInertia(fn (Assert $page) => $page->where('orders.data.0.notes', null));
+        Order::sole()->update(['status' => 'confirmed']);
         $this->actingAs($shop->user)->get('/seller/orders')->assertOk()->assertInertia(fn (Assert $page) => $page->where('orders.data.0.notes', $note));
     }
 
@@ -211,7 +218,8 @@ class BuyerPolishBoundaryTest extends TestCase
     public function test_review_text_exact_boundaries(int $length, bool $accepted): void
     {
         $payload = $this->reviewPurchase();
-        $comment = str_pad('The parcel arrived safely and matches the item description. ', $length, 'a');
+        // Pad with real words: filler such as "aaaa" is refused as spam.
+        $comment = str_pad('The parcel arrived safely and matches the item description. ', $length, 'Sturdy stitching, good zipper. ');
         $response = $this->postJson('/buyer/reviews', [...$payload, 'comment' => $comment]);
         if ($accepted) {
             $response->assertRedirect()->assertSessionHas('success');

@@ -30,6 +30,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Concerns\InteractsWithCheckoutNetwork;
+use App\Services\Orders\CheckoutQuoteService;
 use Tests\TestCase;
 
 class VoucherFundingFoundationTest extends TestCase
@@ -438,6 +439,30 @@ class VoucherFundingFoundationTest extends TestCase
         $this->actingAs($buyer)->post('/checkout', $input)->assertSessionHas('success');
         $this->assertSame('cancelled', $orders[0]->fresh()->status);
         $this->assertSame(10, $items[0]->product->fresh()->stock);
+    }
+
+    public function test_a_fully_cancelled_order_gives_its_single_use_voucher_back_once(): void
+    {
+        [$buyer, , $items, $input] = $this->checkout(['500.00']);
+        $revision = $this->offer(terms: ['global_limit' => 1, 'per_buyer_limit' => 1]);
+        $input['platform_voucher_revision_id'] = $revision->id;
+        $this->post('/checkout', $input)->assertSessionHas('success');
+        $order = Order::sole();
+        $this->assertSame(1, $revision->balance->fresh()->redemption_count);
+
+        $seller = $items[0]->product->shop->user;
+        $this->actingAs($seller)->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
+        $this->post(route('seller.orders.cancel', $order), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
+        $this->assertSame(0, $revision->balance->fresh()->redemption_count);
+        $this->assertSame(0, $revision->voucher->fresh()->used_count);
+        $this->assertSame(1, DB::table('wallet_voucher_restorations')->count());
+
+        // The same buyer and anyone else can use the single-use voucher again.
+        $this->assertContains($revision->id, app(CheckoutQuoteService::class)->availableQuery(buyer: $buyer)->pluck('voucher_revisions.id')->all());
+        [, , , $again] = $this->checkout(['500.00'], $buyer);
+        $again['platform_voucher_revision_id'] = $revision->id;
+        $this->post('/checkout', $again)->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame(1, $revision->balance->fresh()->redemption_count);
     }
 
     public function test_buyer_cancellation_releases_only_its_order_funding_once_with_the_buyer_as_actor(): void

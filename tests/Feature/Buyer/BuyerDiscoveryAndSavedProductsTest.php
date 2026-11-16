@@ -159,8 +159,9 @@ class BuyerDiscoveryAndSavedProductsTest extends TestCase
             'shop_id' => $shop->id, 'name' => 'Everyday Bag', 'price' => '100.00', 'stock' => 2, 'sales_count' => 0,
         ]);
         $filters = ['search' => 'Everyday', 'category' => $shop->rootCategory->slug, 'sort' => 'price_asc', 'min_price' => '0', 'max_price' => '100', 'in_stock' => '1'];
-        foreach (['/' => 18, '/buyer' => 18, '/buyer/search' => 24, '/buyer/catalog' => 24, '/products' => 24, '/catalog' => 24] as $path => $size) {
-            $key = $size === 18 ? 'feedProducts' : 'products';
+        // Every catalogue page holds 24 products so full rows fill 2, 3, 4 and 6 columns.
+        foreach (['/' => 24, '/buyer' => 24, '/buyer/search' => 24, '/buyer/catalog' => 24, '/products' => 24, '/catalog' => 24] as $path => $size) {
+            $key = in_array($path, ['/', '/buyer'], true) ? 'feedProducts' : 'products';
             $first = $this->get($path.'?'.http_build_query($filters))->assertOk();
             $first->assertInertia(fn (Assert $page) => $page->has($key.'.data', $size)
                 ->where($key.'.current_page', 1)->where($key.'.total', 40)

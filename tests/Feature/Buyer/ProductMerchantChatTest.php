@@ -53,7 +53,7 @@ class ProductMerchantChatTest extends TestCase
 
         $this->product = Product::create([
             'shop_id' => $this->shop->id,
-            'category_id' => $this->category->id,
+            'category_id' => $this->shop->root_category_id,
             'name' => 'Premium Heavyweight Oversized Tee',
             'price' => 799.00,
             'stock' => 50,

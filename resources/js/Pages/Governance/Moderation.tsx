@@ -150,7 +150,7 @@ interface HeldReviewItem {
 
 interface BreachedClockItem {
     id: number;
-    stage: string;
+    clock_kind: string;
     breach_at: string | null;
     delivery?: { id: number; tracking_number: string } | null;
     company?: { id: number; name: string } | null;
@@ -318,7 +318,7 @@ export default function GovernanceModeration({
                                     onClick={() => setTab(id as typeof tab)}
                                     className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition ${
                                         active
-                                            ? 'bg-slate-900 text-white'
+                                            ? 'bg-brand-50 text-brand-700'
                                             : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                                     }`}
                                 >
@@ -462,7 +462,7 @@ export default function GovernanceModeration({
                                                         onClick={() => submitAction(`res-${s.id}`, `/governance/moderation/sanctions/${s.id}/resolve`, {
                                                             resolution_notes: actionNotes[`res-${s.id}`] || 'Resolved by governance review.',
                                                         })}
-                                                        className="rounded-lg bg-slate-900 px-3 py-1.5 font-bold text-white disabled:opacity-50"
+                                                        className="rounded-lg border border-line-300 bg-white px-3 py-1.5 font-bold text-ink-900 hover:bg-surface-100 disabled:opacity-50"
                                                     >
                                                         Lift Restriction
                                                     </button>
@@ -550,7 +550,7 @@ export default function GovernanceModeration({
                                             type="button"
                                             disabled={busyKey === `sla-${clock.id}`}
                                             onClick={() => submitAction(`sla-${clock.id}`, `/governance/moderation/sla-clocks/${clock.id}/propose-penalty`, {})}
-                                            className="rounded-lg bg-slate-900 px-3 py-1.5 font-bold text-white"
+                                            className="rounded-lg border border-line-300 bg-white px-3 py-1.5 font-bold text-ink-900 hover:bg-surface-100"
                                         >
                                             Propose {formatPesos(constants.defaultSlaPenaltyCents)} Penalty
                                         </button>
@@ -583,7 +583,7 @@ export default function GovernanceModeration({
                                 </label>
                                 <label className="block font-semibold text-slate-700">
                                     Amount (Centavos)
-                                    <input type="number" min={100} value={manualPenaltyForm.data.amount_cents} onChange={e => manualPenaltyForm.setData('amount_cents', e.target.value)} className="mt-1 w-full rounded-lg border-slate-300 text-xs" />
+                                    <input type="number" inputMode="numeric" step={1} min={100} value={manualPenaltyForm.data.amount_cents} onChange={e => manualPenaltyForm.setData('amount_cents', e.target.value)} className="mt-1 w-full rounded-lg border-slate-300 text-xs" />
                                 </label>
                                 <textarea rows={2} required value={manualPenaltyForm.data.reason} onChange={e => manualPenaltyForm.setData('reason', e.target.value)} placeholder="Penalty reason…" className="w-full rounded-lg border-slate-300 text-xs" />
                                 <textarea rows={2} required value={manualPenaltyForm.data.evidence_summary} onChange={e => manualPenaltyForm.setData('evidence_summary', e.target.value)} placeholder="Corroborating evidence summary…" className="w-full rounded-lg border-slate-300 text-xs" />
@@ -671,13 +671,13 @@ export default function GovernanceModeration({
                             </label>
                             <label className="block font-semibold text-slate-700">
                                 Measured Hub Weight (Grams)
-                                <input type="number" min={1} required value={scaleForm.data.measured_weight_grams} onChange={e => scaleForm.setData('measured_weight_grams', e.target.value)} placeholder="e.g. 3200" className="mt-1 w-full rounded-lg border-slate-300 text-xs" />
+                                <input type="number" inputMode="numeric" step={1} min={1} required value={scaleForm.data.measured_weight_grams} onChange={e => scaleForm.setData('measured_weight_grams', e.target.value)} placeholder="e.g. 3200" className="mt-1 w-full rounded-lg border-slate-300 text-xs" />
                             </label>
                             <label className="block font-semibold text-slate-700">
                                 Operator Notes
                                 <textarea rows={2} value={scaleForm.data.notes} onChange={e => scaleForm.setData('notes', e.target.value)} className="mt-1 w-full rounded-lg border-slate-300 text-xs" />
                             </label>
-                            <button type="submit" disabled={scaleForm.processing} className="w-full rounded-xl bg-slate-900 px-4 py-2 font-bold text-white">
+                            <button type="submit" disabled={scaleForm.processing} className="w-full rounded-xl border border-line-300 bg-white px-4 py-2 font-bold text-ink-900 hover:bg-surface-100">
                                 Record Scale Reading
                             </button>
                         </form>

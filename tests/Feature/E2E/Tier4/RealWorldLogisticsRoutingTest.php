@@ -56,9 +56,9 @@ class RealWorldLogisticsRoutingTest extends TestCase
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
         $this->assertSame('paid', $order->fresh()->payment_status);
-        $this->assertSame('60.00', $order->shipping_fee);
+        $this->assertSame('50.00', $order->shipping_fee); // Weight-based default tariff for a parcel up to 1 kg.
         $cash = CodAccount::where('order_id', $order->id)->sole();
-        $this->assertSame(206000, $cash->expected_cents);
+        $this->assertSame(205000, $cash->expected_cents);
         $this->assertSame($delivery->assigned_rider_id, $cash->collector_id);
         $this->assertNull($cash->reconciled_at);
         $this->settleFlowOrder($order);

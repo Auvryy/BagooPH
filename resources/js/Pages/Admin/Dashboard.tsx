@@ -15,7 +15,7 @@ export default function AdminDashboard({ stats, queues, finance, orderStates, wo
                 {[
                     ['Order records', stats.totalOrders, 'All recorded orders, including cancelled and returned orders'],
                     ['Open parcels', stats.openParcels, 'Known open pickup, hub, delivery and recovery states'],
-                    ['Delivered orders awaiting buyer confirmation', stats.deliveredAwaitingBuyer, 'Only the buyer can confirm receipt and complete an order'],
+                    ['Delivered, not yet completed', stats.deliveredAwaitingBuyer, 'Delivery proof normally completes an order; these wait for the buyer or a review'],
                 ].map(([label, count, description]) => <section key={String(label)} className="rounded-xl border border-slate-300 bg-white p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold text-slate-900">{count}</p><p className="mt-2 text-xs leading-5 text-slate-500">{description}</p></section>)}
             </div>
             <section className="rounded-xl border border-slate-300 bg-white p-6"><h2 className="font-semibold text-slate-900">Review queues</h2><div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{queues.map((queue) => <Link key={queue.label} href={queue.url} className="rounded-lg border border-slate-300 p-4 hover:border-[#E00D42]"><p className="text-sm text-slate-600">{queue.label}</p><p className="mt-2 text-2xl font-semibold text-slate-900">{queue.count}</p><p className="mt-2 text-xs font-semibold text-[#E00D42]">Open records</p></Link>)}</div></section>

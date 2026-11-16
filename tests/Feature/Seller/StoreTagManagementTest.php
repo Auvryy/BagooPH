@@ -263,11 +263,13 @@ class StoreTagManagementTest extends TestCase
 
     public function test_product_department_is_exactly_the_approved_signup_root(): void
     {
-        $child = Category::factory()->create(['parent_id' => $this->shop->root_category_id]);
-        $this->postJson('/seller/products', $this->listing(['category_id' => $child->id]))
+        $foreign = Category::factory()->create();
+        $this->postJson('/seller/products', $this->listing(['category_id' => $foreign->id]))
             ->assertUnprocessable()->assertJsonValidationErrors('category_id');
         $this->assertDatabaseCount('products', 0);
-        $this->post('/seller/products', $this->listing())->assertSessionHasNoErrors();
+        // A legacy child of the department is filed under the approved department itself.
+        $child = Category::factory()->create(['parent_id' => $this->shop->root_category_id]);
+        $this->post('/seller/products', $this->listing(['category_id' => $child->id]))->assertSessionHasNoErrors();
         $this->assertSame($this->shop->root_category_id, Product::sole()->category_id);
     }
 }
